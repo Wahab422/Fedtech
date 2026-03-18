@@ -1,0 +1,51 @@
+/* 
+ * Global stylesheet entry point.
+ * Bundled to public/index.css so you can reference it locally:
+ * <link rel="stylesheet" href="http://localhost:3000/index.css">
+ *
+ * Add your site-wide styles below.
+ */
+
+/* Accordions CSS */
+[data-accordion-list='css'] [data-accordion-body] {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.6s cubic-bezier(0.625, 0.05, 0, 1);
+}
+
+[data-accordion-list='css'] [data-accordion='active'] [data-accordion-body] {
+  grid-template-rows: 1fr !important;
+}
+
+/* Modals CSS */
+.modal[data-modal-group-status='active'] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.line-wrap {
+  overflow: hidden;
+}
+
+.accordion-image-change .featured-block-img-block {
+  position: relative;
+}
+
+[data-accordion-img] {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+[data-accordion-img='active'] {
+  opacity: 1;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}

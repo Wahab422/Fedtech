@@ -98,36 +98,36 @@ export function initNavbar() {
     }
 
     //
-    const nav = document.querySelector('[nav]');
-    const menuBtn = document.querySelector('[menu-button]');
-    if (menuBtn && nav) {
-      menuBtn.addEventListener('click', () => {
-        nav.classList.toggle('open');
-      });
-    }
+    // const nav = document.querySelector('[nav]');
+    // const menuBtn = document.querySelector('[menu-button]');
+    // if (menuBtn && nav) {
+    //   menuBtn.addEventListener('click', () => {
+    //     nav.classList.toggle('open');
+    //   });
+    // }
 
-    let prevScrollPos = window.pageYOffset;
+    // let prevScrollPos = window.pageYOffset;
 
-    window.addEventListener('scroll', () => {
-      const currentScrollPos = window.pageYOffset;
+    // window.addEventListener('scroll', () => {
+    //   const currentScrollPos = window.pageYOffset;
 
-      // Scrolled state
-      if (currentScrollPos > 0) {
-        nav.classList.add('scrolled');
-      } else {
-        nav.classList.remove('scrolled');
-      }
+    //   // Scrolled state
+    //   if (currentScrollPos > 0) {
+    //     nav.classList.add('scrolled');
+    //   } else {
+    //     nav.classList.remove('scrolled');
+    //   }
 
-      // Scroll direction
-      if (window.innerWidth > 768) {
-        if (prevScrollPos > currentScrollPos) {
-          nav.classList.remove('scroll-down');
-        } else {
-          nav.classList.add('scroll-down');
-        }
-      }
-      prevScrollPos = currentScrollPos;
-    });
+    //   // Scroll direction
+    //   if (window.innerWidth > 768) {
+    //     if (prevScrollPos > currentScrollPos) {
+    //       nav.classList.remove('scroll-down');
+    //     } else {
+    //       nav.classList.add('scroll-down');
+    //     }
+    //   }
+    //   prevScrollPos = currentScrollPos;
+    // });
     cleanupFunctions.push(() => {
       window.removeEventListener('scroll', () => {
         const currentScrollPos = window.pageYOffset;

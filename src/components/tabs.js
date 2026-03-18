@@ -29,8 +29,8 @@
  * - data-stop-autoplay-on-first-interaction Stop autoplay on first click/keyboard
  */
 
-import { handleError } from '../../utils/helpers';
-import { logger } from '../../utils/logger';
+import { handleError } from '../utils/helpers';
+import { logger } from '../utils/logger';
 
 const DEFAULT_AUTOPLAY_MS = 5000;
 const instances = new Map();
@@ -75,7 +75,6 @@ export function initTabs(options = {}) {
 
   if (initializedCount > 0) {
     logger.log(`🧭 Tabs ready (${initializedCount} instance${initializedCount > 1 ? 's' : ''})`);
-    console.log('[tabsComp1] Tabs loaded', initializedCount, 'instance(s)');
   }
 
   return () => cleanupTabs();

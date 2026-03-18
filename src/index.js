@@ -3,16 +3,7 @@ import { logger } from './utils/logger';
 
 const pageRegistry = {
   home: () => import('./pages/home').then((m) => m.initHomePage),
-  pricing: () => import('./pages/pricing').then((m) => m.initPricingPage),
-  blog: () => import('./pages/blog').then((m) => m.initBlogPage),
-  blogtemplate: () => import('./pages/blogtemplate').then((m) => m.initBlogTemplatePage),
-  product: () => import('./pages/product').then((m) => m.initProductPage),
-  howitworks: () => import('./pages/howItWorks').then((m) => m.initHowItWorksPage),
-  support: () => import('./pages/support').then((m) => m.initSupportPage),
-  about: () => import('./pages/about').then((m) => m.initAboutPage),
-  useCases: () => import('./pages/useCases').then((m) => m.initUseCasesPage),
 };
-
 
 let cachedPageName = null;
 function getCurrentPage() {

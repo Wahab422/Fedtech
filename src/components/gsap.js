@@ -354,7 +354,7 @@ export async function handleGlobalAnimation() {
   // General Element Animation
   function applyElementAnimation() {
     const elements = document.querySelectorAll(
-      '[anim-element]:not([modal] [anim-element]), .anim-element:not([modal] .anim-element), .w-pagination-next:not([modal] .w-pagination-next)'
+      '[anim-element]:not([modal] [anim-element]), .anim-element:not([modal] .anim-element)'
     );
     if (elements.length === 0) return;
 
@@ -523,6 +523,78 @@ export async function handleGlobalAnimation() {
     });
   }
 
+  // Numbers Counter Animation
+  function applyCounterAnimation() {
+    const counters = document.querySelectorAll('[counter-anim]:not([modal] [counter-anim])');
+    console.log(counters);
+    if (!counters.length) return;
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const easeOutQuad = (t) => t * (2 - t);
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+
+          const el = entry.target;
+          obs.unobserve(el);
+          if (el.getAttribute('data-counter-animated') === 'true') return;
+          el.setAttribute('data-counter-animated', 'true');
+
+          const text = el.textContent || '';
+          const match = text.match(/(\d[\d.,]*)/);
+          if (!match) return;
+
+          const originalNumberToken = match[0];
+          const numStr = originalNumberToken.replace(/,/g, '');
+          const target = Number.parseFloat(numStr);
+          if (!Number.isFinite(target)) return;
+
+          const decimals = (numStr.split('.')[1] || '').length;
+          const useCommas = originalNumberToken.includes(',');
+
+          const setValue = (value) => {
+            const formatted = useCommas
+              ? value.toLocaleString(undefined, {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals,
+              })
+              : value.toFixed(decimals);
+            el.textContent = text.replace(originalNumberToken, formatted);
+          };
+
+          if (prefersReducedMotion) {
+            setValue(target);
+            return;
+          }
+
+          const duration = Number.parseInt(el.getAttribute('counter-duration') || '', 10) || 1000;
+          let startTime = null;
+
+          const animate = (time) => {
+            if (!startTime) startTime = time;
+            const progress = Math.min((time - startTime) / duration, 1);
+            const eased = easeOutQuad(progress);
+            setValue(eased * target);
+            if (progress < 1) {
+              requestAnimationFrame(animate);
+            }
+          };
+
+          requestAnimationFrame(animate);
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    counters.forEach((c) => observer.observe(c));
+  }
+
   // Apply all animations
   applyScaleAnimation();
   applyStaggerAnimation();
@@ -532,6 +604,7 @@ export async function handleGlobalAnimation() {
   await applySplitTextAnimation();
   await subRiseAnimation();
   applyContentDividerAnimation();
+  applyCounterAnimation();
   // Mark as initialized to prevent duplicates
   animationsInitialized = true;
 }

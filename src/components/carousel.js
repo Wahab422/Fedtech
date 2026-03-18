@@ -7,9 +7,11 @@
  * 1) Import: import { initCarousel, destroyCarousels, getCarouselInstance } from '../components/carousel';
  * 2) Markup:
  *    <div data-carousel data-sync="hero-slider">
- *      <div class="carousel-wrapper">
- *        <div class="carousel">
- *          <div class="carousel-item">Slide 1</div>
+ *      <div carousel-wrapper>
+ *        <div carousel>
+ *          <div>Slide 1</div>
+ *          <div>Slide 2</div>
+ *          <div>Slide 3</div>
  *        </div>
  *      </div>
  *      <div carousel-btns>
@@ -163,11 +165,16 @@ function initializeCarousels(sliderList) {
     }
 
     const nextBtn =
-      slider.querySelector('[slider-next-btn]') || slider.querySelector('[carousel-next-btn]') ||
-      slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]');
+      slider.querySelector('[slider-next-btn]') ||
+      slider.querySelector('[carousel-next-btn]') ||
+      slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]') ||
+      slider.querySelectorAll('[carousel-btn]')[1];
     const prevBtn =
-      slider.querySelector('[slider-prev-btn]') || slider.querySelector('[carousel-prev-btn]') ||
-      slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]');
+      slider.querySelector('[slider-prev-btn]') ||
+      slider.querySelector('[carousel-prev-btn]') ||
+      slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]') ||
+      slider.querySelectorAll('[carousel-btn]')[0];
+
     let slideButtons = [];
     const customProgressBar = slider.querySelector('.carousel-progress-bar');
     const syncId = slider.getAttribute('data-sync');
@@ -258,7 +265,9 @@ function initializeCarousels(sliderList) {
           // Dots already exist, don't clear the container
           // But ensure we have the right number of dots
           if (existingDots.length !== slides.length) {
-            logger.warn(`Carousel has ${slides.length} slides but ${existingDots.length} dot buttons. Button count should match slide count.`);
+            logger.warn(
+              `Carousel has ${slides.length} slides but ${existingDots.length} dot buttons. Button count should match slide count.`
+            );
           }
         } else {
           // No dots exist, create them
@@ -325,7 +334,6 @@ function initializeCarousels(sliderList) {
         slide.classList.toggle('is-active', index === activeIndex);
         if (fadeMode) {
           slide.style.opacity = index === activeIndex ? '1' : '0';
-          slide.style.transform = index === activeIndex ? 'scale(1)' : 'scale(1.02)';
           slide.style.zIndex = index === activeIndex ? '2' : '1';
           slide.style.pointerEvents = index === activeIndex ? 'auto' : 'none';
         }
@@ -415,7 +423,9 @@ function initializeCarousels(sliderList) {
       // Verify we have the correct number of buttons
       const slides = getSlides();
       if (slideButtons.length !== slides.length && slideButtons.length > 0) {
-        logger.warn(`Carousel has ${slides.length} slides but ${slideButtons.length} slide buttons. Button indices may not match slide indices.`);
+        logger.warn(
+          `Carousel has ${slides.length} slides but ${slideButtons.length} slide buttons. Button indices may not match slide indices.`
+        );
       }
 
       updateButtonStates();

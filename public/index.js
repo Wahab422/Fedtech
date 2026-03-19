@@ -466,7 +466,7 @@
           paginationRefreshScheduled = false;
           refresh();
         });
-        setTimeout(refresh, 150);
+        setTimeout(refresh, 250);
       };
       document.addEventListener(
         "click",
@@ -652,6 +652,81 @@
       window.removeEventListener("resize", checkInView);
     };
   }
+  function smoothScrollTo(element, target, offset = 0, options = {}) {
+    if (typeof document === "undefined") {
+      return () => {
+      };
+    }
+    const triggers = resolveElementList(element);
+    if (!triggers.length) {
+      logger.warn("[smoothScrollTo] Trigger element(s) not found:", element);
+      return () => {
+      };
+    }
+    const handler = (event) => {
+      if (event?.preventDefault) {
+        event.preventDefault();
+      }
+      const resolvedTarget = typeof target === "function" ? target(event, event?.currentTarget) : target;
+      lenisSmoothScrollTo(resolvedTarget, offset, options);
+    };
+    triggers.forEach((trigger) => {
+      const existingHandler = smoothScrollHandlers.get(trigger);
+      if (existingHandler) {
+        trigger.removeEventListener("click", existingHandler);
+      }
+      trigger.addEventListener("click", handler);
+      smoothScrollHandlers.set(trigger, handler);
+    });
+    return () => {
+      triggers.forEach((trigger) => {
+        const savedHandler = smoothScrollHandlers.get(trigger);
+        if (savedHandler) {
+          trigger.removeEventListener("click", savedHandler);
+          smoothScrollHandlers.delete(trigger);
+        }
+      });
+    };
+  }
+  function lenisSmoothScrollTo(target, offset = 0, options = {}) {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const element = resolveElement(target);
+    if (!element) {
+      logger.warn("[lenisSmoothScrollTo] Target not found:", target);
+      return;
+    }
+    const lenis2 = getLenis();
+    if (!lenis2) {
+      nativeScrollToElement(element, offset);
+      return;
+    }
+    const navbar = document.querySelector("[data-navbar]");
+    const navbarOffset = navbar ? navbar.offsetHeight : 0;
+    const lenisOptions = {
+      duration: 1.2,
+      ...options
+    };
+    if (typeof lenisOptions.offset !== "number") {
+      lenisOptions.offset = -(offset + navbarOffset);
+    }
+    lenis2.scrollTo(element, lenisOptions);
+  }
+  function resolveElement(ref) {
+    if (!ref || typeof document === "undefined")
+      return null;
+    if (typeof ref === "string") {
+      return document.querySelector(ref);
+    }
+    if (ref === window || ref === document || ref === document.documentElement) {
+      return document.documentElement;
+    }
+    if (isDomElement(ref)) {
+      return ref;
+    }
+    return null;
+  }
   function resolveElementList(ref) {
     if (!ref || typeof document === "undefined")
       return [];
@@ -668,6 +743,17 @@
       return ref.filter(isDomElement);
     }
     return [];
+  }
+  function nativeScrollToElement(target, offset = 0) {
+    if (typeof window === "undefined" || !target) {
+      return;
+    }
+    const elementPosition = target.getBoundingClientRect().top + window.pageYOffset;
+    const destination = elementPosition - offset;
+    window.scrollTo({
+      top: destination,
+      behavior: "smooth"
+    });
   }
   function isDomElement(node) {
     return typeof Element !== "undefined" && node instanceof Element;
@@ -717,10 +803,12 @@
       document.head.appendChild(script);
     });
   }
+  var smoothScrollHandlers;
   var init_helpers = __esm({
     "src/utils/helpers.js"() {
       init_logger();
       init_lenis2();
+      smoothScrollHandlers = /* @__PURE__ */ new WeakMap();
     }
   });
 
@@ -1969,6 +2057,112 @@
     }
   });
 
+  // src/functions/eventsList.js
+  function initEventsList(cleanupFunctions5 = []) {
+    window.FinsweetAttributes || (window.FinsweetAttributes = []);
+    window.FinsweetAttributes.push([
+      "list",
+      () => {
+        const listEl = document.querySelector("[events-list]");
+        if (!listEl)
+          return;
+        const observer = new MutationObserver((mutations) => {
+          const newItems = [];
+          mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === 1 && node.matches(".w-dyn-item")) {
+                newItems.push(node);
+              }
+            });
+          });
+          if (newItems.length) {
+            updateEventItems(newItems);
+          }
+        });
+        observer.observe(listEl, {
+          childList: true
+        });
+        cleanupFunctions5.push(() => observer.disconnect());
+        const initialItems = document.querySelectorAll("[event-item]");
+        updateEventItems(initialItems);
+      }
+    ]);
+  }
+  function countEventsStatus() {
+    window.FinsweetAttributes || (window.FinsweetAttributes = []);
+    window.FinsweetAttributes.push([
+      "list",
+      () => {
+        const items = document.querySelectorAll("[event-item]");
+        let pastCount = 0;
+        let upcomingCount = 0;
+        const today = /* @__PURE__ */ new Date();
+        today.setHours(0, 0, 0, 0);
+        items.forEach((item) => {
+          const dateEl = item.querySelector("[event-date]");
+          if (!dateEl)
+            return;
+          const eventDate = new Date(dateEl.textContent.trim());
+          if (isNaN(eventDate.getTime()))
+            return;
+          eventDate.setHours(0, 0, 0, 0);
+          if (eventDate >= today)
+            upcomingCount++;
+          else
+            pastCount++;
+        });
+        const pastEl = document.querySelector("[past-events-count]");
+        const upcomingEl = document.querySelector("[upcoming-events-count]");
+        if (pastEl)
+          pastEl.textContent = pastCount;
+        if (upcomingEl)
+          upcomingEl.textContent = upcomingCount;
+      }
+    ]);
+  }
+  function updateEventItems(items) {
+    const msPerDay = 1e3 * 60 * 60 * 24;
+    items.forEach((item) => {
+      const speakers = item.querySelectorAll("[speaker-item]");
+      const count = speakers.length;
+      const speakersLabel = item.querySelector("[total-speakers]");
+      if (speakersLabel) {
+        speakersLabel.textContent = `${count} Speaker${count !== 1 ? "s" : ""}`;
+      }
+      const dateEl = item.querySelector("[event-date]");
+      const pillTag = item.querySelector(".pill-tag");
+      if (!dateEl || !pillTag)
+        return;
+      const rawDate = dateEl.textContent.trim();
+      const eventDate = new Date(rawDate);
+      if (isNaN(eventDate.getTime())) {
+        pillTag.textContent = "Invalid date";
+        return;
+      }
+      const today = /* @__PURE__ */ new Date();
+      today.setHours(0, 0, 0, 0);
+      eventDate.setHours(0, 0, 0, 0);
+      const diffInDays = Math.round((eventDate - today) / msPerDay);
+      if (diffInDays > 30) {
+        const diffInMonths = Math.floor(diffInDays / 30);
+        pillTag.textContent = diffInMonths === 1 ? "month left" : `${diffInMonths} months left`;
+        pillTag.setAttribute("pill-color", "green");
+      } else if (diffInDays > 0) {
+        pillTag.textContent = `${diffInDays} day${diffInDays > 1 ? "s" : ""} left`;
+        pillTag.setAttribute("pill-color", "green");
+      } else if (diffInDays === 0) {
+        pillTag.textContent = "Today";
+        pillTag.setAttribute("pill-color", "yellow");
+      } else {
+        pillTag.textContent = "Past event";
+      }
+    });
+  }
+  var init_eventsList = __esm({
+    "src/functions/eventsList.js"() {
+    }
+  });
+
   // src/pages/home.js
   var home_exports = {};
   __export(home_exports, {
@@ -1980,6 +2174,7 @@
     try {
       initCarousel();
       initTabs();
+      initEventsList(cleanupFunctions3);
       cleanupFunctions3.push(() => {
         try {
           cleanupCarousels();
@@ -2022,7 +2217,45 @@
       init_logger();
       init_carousel();
       init_tabs();
+      init_eventsList();
       cleanupFunctions3 = [];
+    }
+  });
+
+  // src/pages/events.js
+  var events_exports = {};
+  __export(events_exports, {
+    cleanupEventsPage: () => cleanupEventsPage,
+    initEventsPage: () => initEventsPage
+  });
+  async function initEventsPage() {
+    logger.log("\u{1F4C5} Events page initialized");
+    try {
+      initEventsList(cleanupFunctions4);
+      countEventsStatus(cleanupFunctions4);
+      smoothScrollTo("#scroll-to-events-btn", "#events-filter", 80);
+    } catch (error) {
+      handleError(error, "Events Page Initialization");
+    }
+  }
+  function cleanupEventsPage() {
+    cleanupFunctions4.forEach((cleanup) => {
+      try {
+        cleanup();
+      } catch (error) {
+        handleError(error, "Events Page Cleanup");
+      }
+    });
+    cleanupFunctions4.length = 0;
+  }
+  var cleanupFunctions4;
+  var init_events = __esm({
+    "src/pages/events.js"() {
+      init_helpers();
+      init_logger();
+      init_eventsList();
+      init_helpers();
+      cleanupFunctions4 = [];
     }
   });
 
@@ -2123,20 +2356,8 @@
   var cleanupFunctions2 = [];
   function initFooter() {
     logger.log("\u{1F9B6} Footer initialized");
-    const copyrightYear = document.querySelector("[data-copyright-year]");
-    if (copyrightYear) {
-      copyrightYear.textContent = (/* @__PURE__ */ new Date()).getFullYear();
-    }
-    const backToTopButton = document.querySelector("[data-back-to-top]");
+    const backToTopButton = document.querySelector("#data-back-to-top");
     if (backToTopButton) {
-      const scrollHandler = rafThrottle(() => {
-        if (window.pageYOffset > 300) {
-          backToTopButton.classList.add("is-visible");
-        } else {
-          backToTopButton.classList.remove("is-visible");
-        }
-      });
-      window.addEventListener("scroll", scrollHandler, { passive: true });
       const handleClick = () => {
         backToTop();
       };
@@ -2536,7 +2757,6 @@
     }
     function applyCounterAnimation() {
       const counters = document.querySelectorAll("[counter-anim]:not([modal] [counter-anim])");
-      console.log(counters);
       if (!counters.length)
         return;
       const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -3538,7 +3758,8 @@
   // src/index.js
   init_logger();
   var pageRegistry = {
-    home: () => Promise.resolve().then(() => (init_home(), home_exports)).then((m) => m.initHomePage)
+    home: () => Promise.resolve().then(() => (init_home(), home_exports)).then((m) => m.initHomePage),
+    events: () => Promise.resolve().then(() => (init_events(), events_exports)).then((m) => m.initEventsPage)
   };
   var cachedPageName = null;
   function getCurrentPage() {

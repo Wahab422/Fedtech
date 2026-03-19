@@ -3,6 +3,7 @@ import { logger } from './utils/logger';
 
 const pageRegistry = {
   home: () => import('./pages/home').then((m) => m.initHomePage),
+  events: () => import('./pages/events').then((m) => m.initEventsPage),
 };
 
 let cachedPageName = null;

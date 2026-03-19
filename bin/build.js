@@ -1,10 +1,10 @@
 const esbuild = require('esbuild');
-const { spawn } = require('child_process');
-const path = require('path');
+const fs = require('fs');
 
 // Configuration
 const ENTRY_POINTS = ['src/index.js', 'src/index.css'];
-const OUTPUT_DIR = 'public';
+// Vercel serves `dist/` (see `vercel.json`), so build there.
+const OUTPUT_DIR = 'dist';
 const DEV_MODE = process.argv.includes('--dev');
 const ENABLE_LIVE_RELOAD = true;
 
@@ -46,6 +46,13 @@ const liveReloadScript = `
 
 async function build() {
   try {
+    // Clean output dir so old chunk files don't linger
+    try {
+      fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
+    } catch (e) {
+      // ignore
+    }
+
     if (DEV_MODE) {
       console.log('🚀 Starting development mode...\n');
 
@@ -54,8 +61,8 @@ async function build() {
         ...buildConfig,
         banner: ENABLE_LIVE_RELOAD
           ? {
-            js: liveReloadScript,
-          }
+              js: liveReloadScript,
+            }
           : undefined,
       });
 
@@ -80,7 +87,7 @@ async function build() {
       await esbuild.build(buildConfig);
       console.log('✅ Production build complete!\n');
       console.log(
-        `📦 Upload public/index.js and public/index.css to your hosting and add them to Webflow project settings.\n`
+        `📦 Upload dist/index.js and dist/index.css to your hosting and add them to Webflow project settings.\n`
       );
     }
   } catch (error) {

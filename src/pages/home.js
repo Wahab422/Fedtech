@@ -2,6 +2,7 @@ import { handleError } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { initCarousel, destroyCarousels } from '../components/carousel';
 import { initTabs, cleanupTabs } from '../components/tabs';
+import { initEventsList } from '../functions/eventsList';
 const cleanupFunctions = [];
 
 export async function initHomePage() {
@@ -10,6 +11,8 @@ export async function initHomePage() {
   try {
     initCarousel();
     initTabs();
+    initEventsList(cleanupFunctions);
+
     cleanupFunctions.push(() => {
       try {
         cleanupCarousels();

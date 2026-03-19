@@ -148,7 +148,7 @@ async function actuallyInitLenis() {
       });
 
       // Follow-up refresh for async content insertion.
-      setTimeout(refresh, 150);
+      setTimeout(refresh, 250);
     };
 
     // Handle anchor links (Performance optimized with event delegation)

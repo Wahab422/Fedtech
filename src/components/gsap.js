@@ -526,7 +526,6 @@ export async function handleGlobalAnimation() {
   // Numbers Counter Animation
   function applyCounterAnimation() {
     const counters = document.querySelectorAll('[counter-anim]:not([modal] [counter-anim])');
-    console.log(counters);
     if (!counters.length) return;
 
     const prefersReducedMotion =

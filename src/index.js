@@ -1,8 +1,13 @@
 import { initGlobal } from './global';
 import { logger } from './utils/logger';
 
+document.documentElement.classList.add('has-js');
+
 const pageRegistry = {
   home: () => import('./pages/home').then((m) => m.initHomePage),
+  program: () => import('./pages/program').then((m) => m.initProgramPage),
+  'program-detail': () => import('./pages/programDetail').then((m) => m.initProgramDetailPage),
+  programdetail: () => import('./pages/programDetail').then((m) => m.initProgramDetailPage),
 };
 
 let cachedPageName = null;

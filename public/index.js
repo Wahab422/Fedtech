@@ -1,6 +1,6 @@
 
 (function() {
-  const source = new EventSource('http://localhost:35729/esbuild');
+  const source = new EventSource('http://localhost:3000/esbuild');
   source.addEventListener('change', () => {
     location.reload();
   });
@@ -907,8 +907,15 @@
         logger.warn("Carousel viewport not found in slider:", slider);
         return;
       }
-      const nextBtn = slider.querySelector("[slider-next-btn]") || slider.querySelector("[carousel-next-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]') || slider.querySelectorAll("[carousel-btn]")[1];
-      const prevBtn = slider.querySelector("[slider-prev-btn]") || slider.querySelector("[carousel-prev-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]') || slider.querySelectorAll("[carousel-btn]")[0];
+      const navButtonsWrapper = slider.querySelector("[carousel-btns]") || slider.querySelector(".carousel-btns") || slider.querySelector(".arrow-btns");
+      const fallbackNavButtons = navButtonsWrapper ? Array.from(navButtonsWrapper.querySelectorAll("[carousel-btn], .arrow-btn, button")) : [];
+      const explicitNextBtn = slider.querySelector("[slider-next-btn]") || slider.querySelector("[carousel-next-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]');
+      const explicitPrevBtn = slider.querySelector("[slider-prev-btn]") || slider.querySelector("[carousel-prev-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]');
+      const prevBtn = explicitPrevBtn || fallbackNavButtons[0] || null;
+      let nextBtn = explicitNextBtn || (fallbackNavButtons.length > 1 ? fallbackNavButtons[1] : fallbackNavButtons[0]) || null;
+      if (prevBtn && nextBtn && prevBtn === nextBtn) {
+        nextBtn = null;
+      }
       let slideButtons = [];
       const customProgressBar = slider.querySelector(".carousel-progress-bar");
       const syncId = slider.getAttribute("data-sync");
@@ -975,7 +982,7 @@
         });
       }
       function ensureDots() {
-        let dotsContainer = slider.querySelector("[carousel-dots]") || slider.querySelector(".carousel-dots");
+        const dotsContainer = slider.querySelector("[carousel-dots]") || slider.querySelector(".carousel-dots");
         const slides = getSlides();
         if (!slides.length)
           return;
@@ -2026,6 +2033,999 @@
     }
   });
 
+  // src/global/finsweet.js
+  function ensureFinsweetGlobal() {
+    if (typeof window === "undefined") {
+      throw new Error("FinsweetService can only run in a browser environment.");
+    }
+    window.FinsweetAttributes || (window.FinsweetAttributes = []);
+    return window.FinsweetAttributes;
+  }
+  var FinsweetService, finsweetService;
+  var init_finsweet = __esm({
+    "src/global/finsweet.js"() {
+      init_logger();
+      FinsweetService = class {
+        constructor() {
+          this.attributePromises = /* @__PURE__ */ new Map();
+          this.listInstances = void 0;
+          this.disposers = [];
+          this.listReadyPromise = this.waitForAttribute("list").then((api) => {
+            this.listInstances = api;
+            return api;
+          });
+        }
+        waitForAttribute(key) {
+          if (this.attributePromises.has(key)) {
+            return this.attributePromises.get(key);
+          }
+          const maybeLoaded = this.resolveImmediatelyIfLoaded(key);
+          if (maybeLoaded) {
+            const p = maybeLoaded;
+            this.attributePromises.set(key, p);
+            return p;
+          }
+          const promise = new Promise((resolve) => {
+            const global = ensureFinsweetGlobal();
+            global.push([
+              key,
+              (api) => {
+                resolve(api);
+              }
+            ]);
+          });
+          this.attributePromises.set(key, promise);
+          return promise;
+        }
+        async restartAttribute(key) {
+          const global = ensureFinsweetGlobal();
+          if (global && typeof global === "object" && "modules" in global) {
+            const controls = global.modules?.[key];
+            if (controls) {
+              if (typeof controls.restart === "function") {
+                controls.restart();
+              }
+              const maybePromise = controls.loading;
+              return maybePromise && typeof maybePromise.then === "function" ? maybePromise : Promise.resolve(maybePromise);
+            }
+          }
+          return this.waitForAttribute(key);
+        }
+        whenListReady() {
+          return this.listReadyPromise;
+        }
+        getListInstances() {
+          return this.listInstances;
+        }
+        getListArray() {
+          const listsApi = this.listInstances;
+          if (Array.isArray(listsApi))
+            return listsApi;
+          if (listsApi && typeof listsApi === "object")
+            return Object.values(listsApi);
+          return [];
+        }
+        registerHook(phase, callback) {
+          this.registerHookInternal(phase, (list, items) => {
+            callback(list, items);
+            return items;
+          });
+        }
+        /**
+         * Register a hook that can return modified items (for filter, sort, beforeRender phases).
+         * Callback return value is passed to the next lifecycle phase.
+         */
+        registerHookMutable(phase, callback) {
+          this.registerHookInternal(phase, (list, items) => {
+            const result = callback(list, items);
+            return result !== void 0 ? result : items;
+          });
+        }
+        registerHookInternal(phase, callback) {
+          this.whenListReady().then((listsApi) => {
+            const instances2 = Array.isArray(listsApi) ? listsApi : listsApi && typeof listsApi === "object" ? Object.values(listsApi) : [];
+            instances2.forEach((list) => {
+              if (list && typeof list.addHook === "function") {
+                list.addHook(phase, (items) => callback(list, items));
+              }
+            });
+          });
+        }
+        onStart(cb) {
+          this.registerHook("start", cb);
+        }
+        onFilter(cb) {
+          this.registerHook("filter", cb);
+        }
+        onSort(cb) {
+          this.registerHookMutable("sort", cb);
+        }
+        onPagination(cb) {
+          this.registerHook("pagination", cb);
+        }
+        onBeforeRender(cb) {
+          this.registerHookMutable("beforeRender", cb);
+        }
+        onRender(cb) {
+          this.registerHook("render", cb);
+        }
+        onAfterRender(cb) {
+          this.registerHook("afterRender", cb);
+        }
+        onListChange(source, callback, options) {
+          const disposeTasks = [];
+          this.getListArray().forEach((list) => {
+            if (list && typeof list.watch === "function") {
+              const stop = list.watch(source(list), callback(list), options);
+              if (typeof stop === "function") {
+                disposeTasks.push(stop);
+              }
+            }
+          });
+          const cleanup = () => {
+            disposeTasks.forEach((dispose) => {
+              try {
+                dispose();
+              } catch (error) {
+                logger.warn("[FinsweetService] Failed to dispose watcher", error);
+              }
+            });
+          };
+          this.disposers.push(cleanup);
+          return cleanup;
+        }
+        addEffect(effectCallback, options) {
+          const disposeTasks = [];
+          this.getListArray().forEach((list) => {
+            if (list && typeof list.effect === "function") {
+              const stop = list.effect(effectCallback(list), options);
+              if (typeof stop === "function") {
+                disposeTasks.push(stop);
+              }
+            }
+          });
+          const cleanup = () => {
+            disposeTasks.forEach((dispose) => {
+              try {
+                dispose();
+              } catch (error) {
+                logger.warn("[FinsweetService] Failed to dispose effect", error);
+              }
+            });
+          };
+          this.disposers.push(cleanup);
+          return cleanup;
+        }
+        /**
+         * Get the list instance by attribute
+         * @param attribute - The attribute to get the list instance for (e.g. 'data-products-list')
+         * @returns The finsweet list instance
+         */
+        async getListByAttribute(attribute) {
+          const listsApi = await this.whenListReady();
+          const listArray = Array.isArray(listsApi) ? listsApi : listsApi && typeof listsApi === "object" ? Object.values(listsApi) : [];
+          const targetList = listArray.find(
+            (list) => list?.listElement?.attributes.getNamedItem(attribute)
+          );
+          if (!targetList)
+            return void 0;
+          const loaders = [];
+          if (targetList.loadingSearchParamsData)
+            loaders.push(targetList.loadingSearchParamsData);
+          if (targetList.loadingPaginationElements)
+            loaders.push(targetList.loadingPaginationElements);
+          if (targetList.loadingPaginatedItems)
+            loaders.push(targetList.loadingPaginatedItems);
+          if (loaders.length) {
+            try {
+              await Promise.all(loaders);
+            } catch (err) {
+              logger.warn("[FinsweetService] Target list loaders rejected", err);
+            }
+          }
+          return targetList;
+        }
+        async getListByInstance(instanceKey) {
+          if (!instanceKey)
+            return void 0;
+          const listsApi = await this.whenListReady();
+          const listArray = Array.isArray(listsApi) ? listsApi : listsApi && typeof listsApi === "object" ? Object.values(listsApi) : [];
+          return listArray.find((list) => list?.instance === instanceKey);
+        }
+        /**
+         * Clears all filter conditions except the specified condition for the provided
+         * list instance. If the specified condition is missing, all conditions are
+         * removed. This keeps the source-of-truth inside Finsweet in sync when the
+         * dataset (mode) changes.
+         */
+        clearFiltersExceptFor(listInstance, exceptFor = []) {
+          if (!listInstance)
+            return;
+          const filtersGroup = listInstance?.filters?.value?.groups?.[0];
+          if (!filtersGroup)
+            return;
+          const typeCondition = filtersGroup.conditions.find((c) => exceptFor?.includes(c.fieldKey));
+          if (typeCondition) {
+            const plainTypeCondition = JSON.parse(JSON.stringify(typeCondition));
+            filtersGroup.conditions.splice(0, filtersGroup.conditions.length, plainTypeCondition);
+          } else {
+            logger.warn("[FinsweetService] No condition found. Clearing all filters.");
+            filtersGroup.conditions.splice(0, filtersGroup.conditions.length);
+          }
+        }
+        /**
+         * Clears filters by removing specific conditions or all conditions if none specified
+         * @param listInstance – the list instance to clear filters for
+         * @param specificConditionKeys – the condition keys to remove (if empty, removes all)
+         */
+        clearFilters(listInstance, specificConditionKeys = []) {
+          if (!listInstance)
+            return;
+          const filtersGroup = listInstance?.filters?.value?.groups?.[0];
+          if (!filtersGroup)
+            return;
+          if (specificConditionKeys.length === 0) {
+            filtersGroup.conditions.splice(0, filtersGroup.conditions.length);
+          } else {
+            for (const condition of [...filtersGroup.conditions]) {
+              if (specificConditionKeys.includes(condition.fieldKey)) {
+                filtersGroup.conditions.splice(filtersGroup.conditions.indexOf(condition), 1);
+              }
+            }
+          }
+        }
+        dispose() {
+          this.disposers.forEach((dispose) => {
+            try {
+              dispose();
+            } catch (error) {
+              logger.warn("[FinsweetService] Failed to run disposer", error);
+            }
+          });
+          this.disposers.length = 0;
+        }
+        resolveImmediatelyIfLoaded(key) {
+          const global = ensureFinsweetGlobal();
+          if (global && typeof global === "object" && "modules" in global) {
+            const controls = global.modules?.[key];
+            if (controls) {
+              const maybePromise = controls.loading;
+              return maybePromise && typeof maybePromise.then === "function" ? maybePromise : Promise.resolve(maybePromise);
+            }
+          }
+          return void 0;
+        }
+      };
+      finsweetService = new FinsweetService();
+    }
+  });
+
+  // src/pages/program.js
+  var program_exports = {};
+  __export(program_exports, {
+    cleanupProgramPage: () => cleanupProgramPage,
+    initProgramPage: () => initProgramPage
+  });
+  async function initProgramPage() {
+    logger.log("\u{1F4D8} Program page initialized");
+    try {
+      initDurationRangeLabels();
+      initNestedSectorsVisibility();
+      await finsweetService.waitForAttribute("list");
+    } catch (error) {
+      handleError(error, "Program Page Initialization");
+    }
+  }
+  function cleanupProgramPage() {
+    cleanupFunctions4.forEach((cleanup) => {
+      try {
+        cleanup();
+      } catch (error) {
+        handleError(error, "Program Page Cleanup");
+      }
+    });
+    cleanupFunctions4.length = 0;
+    logger.log("\u{1F9F9} Program page cleanup");
+  }
+  function initDurationRangeLabels() {
+    const wrappers = document.querySelectorAll(
+      '[fs-rangeslider-element="wrapper"].program-form__range'
+    );
+    if (!wrappers.length)
+      return;
+    wrappers.forEach((wrapper) => {
+      const displayValueEl = wrapper.querySelector('[fs-rangeslider-element="display-value"]');
+      if (!displayValueEl)
+        return;
+      const valueContainer = wrapper.querySelector("[data-filter-value]") || displayValueEl.parentElement;
+      if (!valueContainer)
+        return;
+      const renderUnit = () => {
+        const rawValue = Number.parseInt(displayValueEl.textContent || "", 10);
+        const unit = rawValue === 1 ? "month" : "months";
+        let unitEl = valueContainer.querySelector("[data-duration-unit]");
+        if (!unitEl) {
+          Array.from(valueContainer.childNodes).forEach((node) => {
+            if (node.nodeType !== Node.TEXT_NODE)
+              return;
+            if (/month/i.test(node.textContent || "")) {
+              valueContainer.removeChild(node);
+            }
+          });
+          unitEl = document.createElement("span");
+          unitEl.setAttribute("data-duration-unit", "");
+          valueContainer.append(" ");
+          valueContainer.appendChild(unitEl);
+        }
+        unitEl.textContent = unit;
+      };
+      const observer = new MutationObserver(renderUnit);
+      observer.observe(displayValueEl, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+      renderUnit();
+      cleanupFunctions4.push(() => observer.disconnect());
+    });
+  }
+  function initNestedSectorsVisibility() {
+    const targetSelector = '[fs-list-element="nest-target"][fs-list-nest="sectors"]';
+    const updateTargetState = (target) => {
+      if (!(target instanceof Element))
+        return;
+      const hasVisibleItems = Array.from(target.querySelectorAll(".w-dyn-item")).some((item) => {
+        const text = item.textContent || "";
+        return text.trim().length > 0;
+      });
+      target.classList.toggle("is-nest-ready", hasVisibleItems);
+    };
+    const updateAllTargets = () => {
+      document.querySelectorAll(targetSelector).forEach((target) => updateTargetState(target));
+    };
+    updateAllTargets();
+    let rafId = 0;
+    const observer = new MutationObserver(() => {
+      if (rafId)
+        cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        updateAllTargets();
+        rafId = 0;
+      });
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+    cleanupFunctions4.push(() => {
+      if (rafId)
+        cancelAnimationFrame(rafId);
+      observer.disconnect();
+    });
+  }
+  var cleanupFunctions4;
+  var init_program = __esm({
+    "src/pages/program.js"() {
+      init_helpers();
+      init_logger();
+      init_finsweet();
+      cleanupFunctions4 = [];
+    }
+  });
+
+  // src/components/toc.js
+  function initProgramToc(options = {}) {
+    if (typeof document === "undefined")
+      return () => {
+      };
+    const config = {
+      ...DEFAULT_OPTIONS,
+      ...options
+    };
+    const roots = Array.from(document.querySelectorAll(config.rootSelector));
+    if (!roots.length)
+      return () => {
+      };
+    const cleanups = roots.map((root) => createTocInstance(root, config)).filter((cleanup) => typeof cleanup === "function");
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }
+  function createTocInstance(root, config) {
+    const links = Array.from(root.querySelectorAll(config.linkSelector));
+    if (!links.length)
+      return () => {
+      };
+    const sectionMap = buildSectionMap();
+    const linkItems = links.map((link) => preprocessLinkTarget(link, root, config, sectionMap)).filter(Boolean);
+    if (!linkItems.length) {
+      logger.warn("[ToC] No valid target sections found for ToC links.");
+      return () => {
+      };
+    }
+    const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    root.classList.add("is-toc-ready");
+    if (prefersReducedMotion) {
+      root.classList.add("is-reduced-motion");
+    }
+    let activeLink = null;
+    let observer = null;
+    let ticking = false;
+    let lenisUnsubscribe = null;
+    const readingLineY = () => getActivationLine(config.offset, true);
+    const setActive = (nextLink) => {
+      if (activeLink === nextLink)
+        return;
+      linkItems.forEach(({ link, inner }) => {
+        if (link !== nextLink) {
+          link.removeAttribute("aria-current");
+          inner.classList.remove(config.activeClass);
+        }
+      });
+      if (!nextLink) {
+        activeLink = null;
+        return;
+      }
+      const next = linkItems.find((item) => item.link === nextLink);
+      if (!next)
+        return;
+      next.link.setAttribute("aria-current", config.ariaCurrentValue);
+      next.inner.classList.add(config.activeClass);
+      activeLink = next.link;
+    };
+    const pickActiveItem = (lineY) => {
+      let idx = 0;
+      for (let i = 0; i < linkItems.length; i += 1) {
+        const rect = linkItems[i].target.getBoundingClientRect();
+        if (rect.top <= lineY)
+          idx = i;
+      }
+      return linkItems[idx] || null;
+    };
+    const updateByViewport = () => {
+      const candidate = pickActiveItem(readingLineY());
+      setActive(candidate?.link || null);
+    };
+    const progressHost = (item) => item.progressHost || item.inner;
+    const updateProgressAndPast = () => {
+      const activeIndex = linkItems.findIndex((item) => item.link === activeLink);
+      const lineY = readingLineY();
+      const lastIndex = linkItems.length - 1;
+      for (let i = 0; i < linkItems.length; i += 1) {
+        const current = linkItems[i];
+        const { inner } = current;
+        const host = progressHost(current);
+        const isLast = i === lastIndex;
+        if (activeIndex >= 0 && i < activeIndex) {
+          inner.classList.add(config.pastClass);
+        } else {
+          inner.classList.remove(config.pastClass);
+        }
+        if (!config.useProgress || isLast) {
+          host.style.setProperty(config.progressVarName, "0");
+          continue;
+        }
+        const next = linkItems[i + 1];
+        const s0 = current.target.getBoundingClientRect().top;
+        const s1 = next ? next.target.getBoundingClientRect().top : document.documentElement.getBoundingClientRect().bottom;
+        const range = Math.max(1, s1 - s0);
+        const rawProgress = (lineY - s0) / range;
+        const progress = clamp(rawProgress, 0, 1);
+        if (current.link === activeLink) {
+          host.style.setProperty(config.progressVarName, String(progress));
+        } else {
+          host.style.setProperty(config.progressVarName, "0");
+        }
+      }
+    };
+    const queueSync = () => {
+      if (ticking)
+        return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        updateByViewport();
+        updateProgressAndPast();
+      });
+    };
+    const onClickHandlers = linkItems.map((item) => {
+      const handler = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setActive(item.link);
+        const targetIsOffsetAnchor = item.target.classList.contains("offset-link") || item.target.hasAttribute("data-scroll-offset-anchor");
+        scrollToTarget(item.target, {
+          duration: config.scrollDuration,
+          offset: config.scrollOffset,
+          includeNavbarOffset: !targetIsOffsetAnchor,
+          prefersReducedMotion
+        });
+      };
+      item.link.addEventListener("click", handler);
+      return () => item.link.removeEventListener("click", handler);
+    });
+    observer = new IntersectionObserver(
+      () => {
+        queueSync();
+      },
+      {
+        root: null,
+        rootMargin: `-${Math.round(readingLineY())}px 0px -35% 0px`,
+        threshold: config.observerThreshold
+      }
+    );
+    linkItems.forEach((item) => observer.observe(item.target));
+    window.addEventListener("scroll", queueSync, { passive: true });
+    window.addEventListener("resize", queueSync);
+    const attachLenisScroll = () => {
+      const lenis2 = getLenis();
+      if (!lenis2 || typeof lenis2.on !== "function")
+        return null;
+      const onLenisScroll = () => queueSync();
+      lenis2.on("scroll", onLenisScroll);
+      if (typeof lenis2.off === "function") {
+        return () => lenis2.off("scroll", onLenisScroll);
+      }
+      return () => {
+      };
+    };
+    lenisUnsubscribe = attachLenisScroll();
+    let lenisPollCount = 0;
+    const lenisPollMax = 50;
+    const lenisPollId = window.setInterval(() => {
+      if (lenisUnsubscribe) {
+        window.clearInterval(lenisPollId);
+        return;
+      }
+      lenisPollCount += 1;
+      if (lenisPollCount > lenisPollMax) {
+        window.clearInterval(lenisPollId);
+        return;
+      }
+      const unsub = attachLenisScroll();
+      if (unsub) {
+        lenisUnsubscribe = unsub;
+        window.clearInterval(lenisPollId);
+      }
+    }, 100);
+    queueSync();
+    return () => {
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
+      onClickHandlers.forEach((off) => off());
+      window.removeEventListener("scroll", queueSync);
+      window.removeEventListener("resize", queueSync);
+      window.clearInterval(lenisPollId);
+      if (lenisUnsubscribe) {
+        lenisUnsubscribe();
+        lenisUnsubscribe = null;
+      }
+      linkItems.forEach((item) => {
+        const { link, inner } = item;
+        link.removeAttribute("aria-current");
+        inner.classList.remove(config.activeClass, config.pastClass);
+        progressHost(item).style.removeProperty(config.progressVarName);
+      });
+    };
+  }
+  function preprocessLinkTarget(link, root, config, sectionMap) {
+    const href = link.getAttribute("href") || "";
+    const hash = extractHash(href);
+    if (!hash)
+      return null;
+    const target = resolveTarget(hash, sectionMap);
+    if (!target) {
+      logger.warn("[ToC] Target not found for hash:", hash);
+      return null;
+    }
+    if (!target.id) {
+      target.id = slugify(hash.replace(/^#/, "")) || `toc-section-${Date.now()}`;
+    }
+    const canonicalHref = `#${target.id}`;
+    link.setAttribute("href", canonicalHref);
+    link.dataset.tocTarget = target.id;
+    const inner = resolveInnerElement(link, config.innerSelector);
+    if (!link.hasAttribute("aria-label")) {
+      const text = (link.textContent || "").trim();
+      if (text)
+        link.setAttribute("aria-label", text);
+    }
+    if (!root.contains(link))
+      return null;
+    const wrap = link.closest(".program-link");
+    const progressHost = wrap instanceof Element ? wrap : inner;
+    return {
+      link,
+      inner,
+      target,
+      wrap,
+      progressHost
+    };
+  }
+  function buildSectionMap() {
+    const byId = /* @__PURE__ */ new Map();
+    const allWithId = Array.from(document.querySelectorAll("[id]"));
+    allWithId.forEach((el) => {
+      const id = (el.id || "").trim();
+      if (!id)
+        return;
+      const normalizedId = normalizeHash(id);
+      const slugId = slugify(id);
+      if (normalizedId && !byId.has(normalizedId))
+        byId.set(normalizedId, el);
+      if (slugId && !byId.has(slugId))
+        byId.set(slugId, el);
+    });
+    return byId;
+  }
+  function resolveTarget(hash, sectionMap) {
+    const normalized = normalizeHash(hash);
+    if (normalized && sectionMap.has(normalized))
+      return sectionMap.get(normalized);
+    const decoded = decodeHash(hash);
+    const decodedNorm = normalizeHash(decoded);
+    if (decodedNorm && sectionMap.has(decodedNorm))
+      return sectionMap.get(decodedNorm);
+    const slug = slugify(decoded || hash);
+    if (slug && sectionMap.has(slug))
+      return sectionMap.get(slug);
+    const clean = (decoded || hash).replace(/^#/, "");
+    const direct = document.getElementById(clean);
+    if (direct)
+      return direct;
+    return null;
+  }
+  function extractHash(href) {
+    if (!href)
+      return "";
+    if (href.startsWith("#"))
+      return href;
+    if (href.includes("#"))
+      return `#${href.replace(HASH_PREFIX_REGEX, "")}`;
+    return "";
+  }
+  function normalizeHash(value) {
+    if (!value)
+      return "";
+    return String(value).trim().replace(/^#/, "").toLowerCase();
+  }
+  function decodeHash(value) {
+    try {
+      return decodeURIComponent(String(value || ""));
+    } catch (_) {
+      return String(value || "");
+    }
+  }
+  function slugify(value) {
+    return String(value || "").trim().toLowerCase().replace(/^#/, "").replace(/[\u2019'`]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+  function getActivationLine(customOffset = 0, includeNavbarOffset = true) {
+    if (!includeNavbarOffset)
+      return customOffset;
+    const navbar = document.querySelector(".nav") || document.querySelector("[data-navbar]");
+    const navbarHeight = navbar ? navbar.offsetHeight : 0;
+    return navbarHeight + customOffset;
+  }
+  function resolveInnerElement(link, fallbackSelector) {
+    const preferred = link.closest(".program-link__inner");
+    if (preferred)
+      return preferred;
+    if (link.matches(".program-link-text"))
+      return link;
+    if (fallbackSelector) {
+      const matched = link.closest(fallbackSelector);
+      if (matched)
+        return matched;
+    }
+    return link;
+  }
+  function scrollToTarget(target, options = {}) {
+    if (!target || typeof window === "undefined")
+      return;
+    const includeNavbarOffset = options.includeNavbarOffset !== false;
+    const baseOffset = options.offset || 0;
+    const offset = includeNavbarOffset ? getActivationLine(baseOffset) : baseOffset;
+    const lenis2 = getLenis();
+    const prefersReducedMotion = Boolean(options.prefersReducedMotion);
+    if (lenis2) {
+      lenis2.scrollTo(target, {
+        offset: -offset,
+        duration: prefersReducedMotion ? 0 : options.duration ?? 1,
+        immediate: prefersReducedMotion
+      });
+      return;
+    }
+    const top = target.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({
+      top,
+      behavior: prefersReducedMotion ? "auto" : "smooth"
+    });
+  }
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+  var DEFAULT_OPTIONS, HASH_PREFIX_REGEX;
+  var init_toc = __esm({
+    "src/components/toc.js"() {
+      init_lenis2();
+      init_logger();
+      DEFAULT_OPTIONS = {
+        rootSelector: ".program-card__wrap",
+        linkSelector: '.program-link a[href*="#"], .program-link-text[href*="#"]',
+        innerSelector: ".program-link__inner, .program-link-text",
+        activeClass: "w--current",
+        ariaCurrentValue: "location",
+        offset: 16,
+        scrollOffset: 0,
+        /** Match Lenis default in `lenis.js` so TOC clicks animate like other in-page links */
+        scrollDuration: 1.2,
+        useProgress: true,
+        progressVarName: "--toc-progress",
+        /** Applied to `.program-link__inner` for sections above the current one (typography only; no filled bars). */
+        pastClass: "is-toc-past",
+        observerThreshold: [0, 0.2, 0.4, 0.6, 0.8, 1]
+      };
+      HASH_PREFIX_REGEX = /^.*?#/;
+    }
+  });
+
+  // src/components/accordion.js
+  function actuallyInitAccordion(accordion) {
+    if (accordionInitialized.has(accordion))
+      return;
+    accordionInitialized.add(accordion);
+    logger.log("\u{1F3B5} Accordion initializing...");
+    try {
+      let toggleItem = function(item, open) {
+        if (!open && !collapsible) {
+          const activeCount = accordion.querySelectorAll('[data-accordion="active"]').length;
+          if (activeCount <= 1)
+            return;
+        }
+        item.setAttribute("data-accordion", open ? "active" : "not-active");
+        const toggle = item.querySelector("[data-accordion-toggle]");
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+        item.dispatchEvent(
+          new CustomEvent("accordion:toggle", {
+            detail: { open },
+            bubbles: true
+          })
+        );
+        if (closeSiblings && open) {
+          accordion.querySelectorAll('[data-accordion="active"]').forEach((sib) => {
+            if (sib !== item) {
+              sib.setAttribute("data-accordion", "not-active");
+              const sibToggle = sib.querySelector("[data-accordion-toggle]");
+              if (sibToggle) {
+                sibToggle.setAttribute("aria-expanded", "false");
+              }
+              sib.dispatchEvent(
+                new CustomEvent("accordion:toggle", {
+                  detail: { open: false },
+                  bubbles: true
+                })
+              );
+            }
+          });
+        }
+      };
+      const closeSiblings = accordion.getAttribute("data-accordion-close-siblings") === "true";
+      const firstActive = accordion.getAttribute("data-accordion-first-active") === "true";
+      const collapsible = accordion.getAttribute("data-accordion-collapsible") !== "false";
+      const eventType = accordion.getAttribute("data-accordion-event") || "click";
+      accordion.setAttribute("role", "region");
+      if (!accordion.hasAttribute("aria-label")) {
+        accordion.setAttribute("aria-label", "Accordion");
+      }
+      const items = accordion.querySelectorAll("[data-accordion]");
+      items.forEach((item, index) => {
+        const toggle = item.querySelector("[data-accordion-toggle]");
+        const content = item.querySelector("[data-accordion-content]");
+        if (toggle && content) {
+          const contentId = content.id || `accordion-content-${Date.now()}-${index}`;
+          const toggleId = toggle.id || `accordion-toggle-${Date.now()}-${index}`;
+          content.id = contentId;
+          toggle.id = toggleId;
+          toggle.setAttribute("role", "button");
+          toggle.setAttribute("aria-controls", contentId);
+          toggle.setAttribute("aria-expanded", item.getAttribute("data-accordion") === "active");
+          toggle.setAttribute("tabindex", "0");
+          content.setAttribute("role", "region");
+          content.setAttribute("aria-labelledby", toggleId);
+        }
+      });
+      if (firstActive) {
+        const first = accordion.querySelector("[data-accordion]");
+        if (first) {
+          first.setAttribute("data-accordion", "active");
+          const toggle = first.querySelector("[data-accordion-toggle]");
+          if (toggle) {
+            toggle.setAttribute("aria-expanded", "true");
+          }
+          first.dispatchEvent(
+            new CustomEvent("accordion:toggle", {
+              detail: { open: true },
+              bubbles: true
+            })
+          );
+        }
+      }
+      if (eventType === "hover") {
+        accordion.querySelectorAll("[data-accordion-toggle]").forEach((toggle) => {
+          const item = toggle.closest("[data-accordion]");
+          if (!item)
+            return;
+          toggle.addEventListener("mouseenter", () => {
+            toggleItem(item, true);
+          });
+        });
+      } else {
+        accordion.addEventListener("click", (e2) => {
+          const toggle = e2.target.closest("[data-accordion-toggle]");
+          if (!toggle)
+            return;
+          const item = toggle.closest("[data-accordion]");
+          if (!item)
+            return;
+          const isActive = item.getAttribute("data-accordion") === "active";
+          toggleItem(item, !isActive);
+        });
+        accordion.addEventListener("keydown", (e2) => {
+          const toggle = e2.target.closest("[data-accordion-toggle]");
+          if (!toggle)
+            return;
+          if (e2.key === "Enter" || e2.key === " ") {
+            e2.preventDefault();
+            const item = toggle.closest("[data-accordion]");
+            if (!item)
+              return;
+            const isActive = item.getAttribute("data-accordion") === "active";
+            toggleItem(item, !isActive);
+          }
+        });
+      }
+    } catch (error) {
+      handleError(error, "Accordion Initialization");
+    }
+  }
+  function initAccordionCSS() {
+    const accordions = document.querySelectorAll('[data-accordion-list="css"]');
+    if (!accordions.length)
+      return;
+    logger.log(`\u23F3 Found ${accordions.length} accordion(s) - will initialize when visible...`);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const accordion = entry.target;
+            observer.unobserve(accordion);
+            accordion.setAttribute("data-accordion-observed", "true");
+            actuallyInitAccordion(accordion);
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: "100px",
+        // Initialize 100px before accordion enters viewport
+        threshold: 0
+      }
+    );
+    accordions.forEach((accordion) => {
+      observer.observe(accordion);
+    });
+  }
+  var accordionInitialized;
+  var init_accordion = __esm({
+    "src/components/accordion.js"() {
+      init_helpers();
+      init_logger();
+      accordionInitialized = /* @__PURE__ */ new Set();
+    }
+  });
+
+  // src/pages/programDetail.js
+  var programDetail_exports = {};
+  __export(programDetail_exports, {
+    cleanupProgramDetailPage: () => cleanupProgramDetailPage,
+    initProgramDetailPage: () => initProgramDetailPage
+  });
+  function initProgramDetailPage() {
+    logger.log("\u{1F4C4} Program detail page initialized");
+    try {
+      cleanupFunctions5.push(initProgramToc());
+      cleanupFunctions5.push(initCarousel());
+      cleanupFunctions5.push(initAccordionCSS());
+      initRegistrationCountdown();
+    } catch (error) {
+      handleError(error, "Program Detail Page Initialization");
+    }
+  }
+  function cleanupProgramDetailPage() {
+    cleanupFunctions5.forEach((cleanup) => {
+      try {
+        cleanup();
+      } catch (error) {
+        handleError(error, "Program Detail Page Cleanup");
+      }
+    });
+    cleanupFunctions5.length = 0;
+  }
+  function initRegistrationCountdown() {
+    const selector = ".info-warning__wrap[data-end-date]";
+    const wrappers = document.querySelectorAll(selector);
+    wrappers.forEach((wrapper) => {
+      updateCountdownBanner(wrapper);
+    });
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (!(node instanceof Element))
+            return;
+          if (node.matches(selector)) {
+            updateCountdownBanner(node);
+          }
+          node.querySelectorAll(selector).forEach((wrapper) => {
+            updateCountdownBanner(wrapper);
+          });
+        });
+      });
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+    cleanupFunctions5.push(() => observer.disconnect());
+  }
+  function updateCountdownBanner(wrapper) {
+    if (!(wrapper instanceof Element))
+      return;
+    const endDateRaw = wrapper.getAttribute("data-end-date");
+    const date = parseDateOnly(endDateRaw);
+    const target = wrapper.querySelector(".style-label") || wrapper;
+    if (!date) {
+      logger.warn(`[Program Detail] Invalid data-end-date value: ${endDateRaw}`);
+      wrapper.classList.add("is-countdown-ready");
+      return;
+    }
+    const sourceText = target.textContent || "";
+    const daysLeft = getDaysUntil(date);
+    if (sourceText.includes("{{1}}")) {
+      target.textContent = sourceText.replace(/\{\{\s*1\s*\}\}/g, String(daysLeft));
+    }
+    wrapper.classList.add("is-countdown-ready");
+  }
+  function parseDateOnly(value) {
+    if (!value)
+      return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime()))
+      return null;
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  }
+  function getDaysUntil(endDate) {
+    const today = /* @__PURE__ */ new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diffMs = endDate.getTime() - startOfToday.getTime();
+    const dayMs = 24 * 60 * 60 * 1e3;
+    return Math.max(0, Math.ceil(diffMs / dayMs));
+  }
+  var cleanupFunctions5;
+  var init_programDetail = __esm({
+    "src/pages/programDetail.js"() {
+      init_helpers();
+      init_logger();
+      init_toc();
+      init_carousel();
+      init_accordion();
+      cleanupFunctions5 = [];
+    }
+  });
+
   // src/global/index.js
   init_lenis2();
 
@@ -2092,16 +3092,13 @@
           }
         });
       }
-      cleanupFunctions.push(() => {
-        window.removeEventListener("scroll", () => {
-          const currentScrollPos = window.pageYOffset;
-          if (currentScrollPos > 0) {
-            nav.classList.add("scrolled");
-          } else {
-            nav.classList.remove("scrolled");
-          }
+      const nav = document.querySelector("[nav]");
+      const menuBtn = document.querySelector("[menu-button]");
+      if (menuBtn && nav) {
+        menuBtn.addEventListener("click", () => {
+          nav.classList.toggle("open");
         });
-      });
+      }
     } catch (error) {
       handleError(error, "Navbar Initialization");
     }
@@ -3537,8 +4534,12 @@
 
   // src/index.js
   init_logger();
+  document.documentElement.classList.add("has-js");
   var pageRegistry = {
-    home: () => Promise.resolve().then(() => (init_home(), home_exports)).then((m) => m.initHomePage)
+    home: () => Promise.resolve().then(() => (init_home(), home_exports)).then((m) => m.initHomePage),
+    program: () => Promise.resolve().then(() => (init_program(), program_exports)).then((m) => m.initProgramPage),
+    "program-detail": () => Promise.resolve().then(() => (init_programDetail(), programDetail_exports)).then((m) => m.initProgramDetailPage),
+    programdetail: () => Promise.resolve().then(() => (init_programDetail(), programDetail_exports)).then((m) => m.initProgramDetailPage)
   };
   var cachedPageName = null;
   function getCurrentPage() {

@@ -18,6 +18,7 @@
  *        <button carousel-prev-btn type="button" class="btn" aria-label="Previous slide">Prev</button>
  *        <button carousel-next-btn type="button" class="btn" aria-label="Next slide">Next</button>
  *      </div>
+ *      <!-- OR fallback: two generic [carousel-btn] inside [carousel-btns] (first = prev, second = next) -->
  *      <div carousel-dots></div>
  *      <div carousel-progress-bar><div class="carousel-progress-fill"></div></div>
  *    </div>
@@ -164,17 +165,33 @@ function initializeCarousels(sliderList) {
       return;
     }
 
-    const nextBtn =
+    const navButtonsWrapper =
+      slider.querySelector('[carousel-btns]') ||
+      slider.querySelector('.carousel-btns') ||
+      slider.querySelector('.arrow-btns');
+    const fallbackNavButtons = navButtonsWrapper
+      ? Array.from(navButtonsWrapper.querySelectorAll('[carousel-btn], .arrow-btn, button'))
+      : [];
+
+    const explicitNextBtn =
       slider.querySelector('[slider-next-btn]') ||
       slider.querySelector('[carousel-next-btn]') ||
-      slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]') ||
-      slider.querySelectorAll('[carousel-btn]')[1];
-    const prevBtn =
+      slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]');
+    const explicitPrevBtn =
       slider.querySelector('[slider-prev-btn]') ||
       slider.querySelector('[carousel-prev-btn]') ||
-      slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]') ||
-      slider.querySelectorAll('[carousel-btn]')[0];
+      slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]');
 
+    const prevBtn = explicitPrevBtn || fallbackNavButtons[0] || null;
+    let nextBtn =
+      explicitNextBtn ||
+      (fallbackNavButtons.length > 1 ? fallbackNavButtons[1] : fallbackNavButtons[0]) ||
+      null;
+
+    if (prevBtn && nextBtn && prevBtn === nextBtn) {
+      // A single generic button cannot represent both directions.
+      nextBtn = null;
+    }
     let slideButtons = [];
     const customProgressBar = slider.querySelector('.carousel-progress-bar');
     const syncId = slider.getAttribute('data-sync');
@@ -214,7 +231,7 @@ function initializeCarousels(sliderList) {
     let carouselApi = null;
     let autoplayTimer = null;
     const cleanupTasks = [];
-    let scrollToIndex = () => { };
+    let scrollToIndex = () => {};
     let restartAutoplay = null;
 
     function getSlides() {
@@ -251,7 +268,7 @@ function initializeCarousels(sliderList) {
     }
 
     function ensureDots() {
-      let dotsContainer =
+      const dotsContainer =
         slider.querySelector('[carousel-dots]') || slider.querySelector('.carousel-dots');
 
       const slides = getSlides();

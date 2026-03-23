@@ -97,14 +97,13 @@ export function initNavbar() {
       });
     }
 
-    //
-    // const nav = document.querySelector('[nav]');
-    // const menuBtn = document.querySelector('[menu-button]');
-    // if (menuBtn && nav) {
-    //   menuBtn.addEventListener('click', () => {
-    //     nav.classList.toggle('open');
-    //   });
-    // }
+    const nav = document.querySelector('[nav]');
+    const menuBtn = document.querySelector('[menu-button]');
+    if (menuBtn && nav) {
+      menuBtn.addEventListener('click', () => {
+        nav.classList.toggle('open');
+      });
+    }
 
     // let prevScrollPos = window.pageYOffset;
 
@@ -128,16 +127,6 @@ export function initNavbar() {
     //   }
     //   prevScrollPos = currentScrollPos;
     // });
-    cleanupFunctions.push(() => {
-      window.removeEventListener('scroll', () => {
-        const currentScrollPos = window.pageYOffset;
-        if (currentScrollPos > 0) {
-          nav.classList.add('scrolled');
-        } else {
-          nav.classList.remove('scrolled');
-        }
-      });
-    });
   } catch (error) {
     handleError(error, 'Navbar Initialization');
   }

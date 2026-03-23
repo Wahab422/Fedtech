@@ -14,3 +14,5 @@ dist/
 .vercel
 
 .vercel
+.tmp/
+.vscode/mcp.json

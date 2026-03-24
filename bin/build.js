@@ -6,7 +6,9 @@ const ENTRY_POINTS = ['src/index.js', 'src/index.css'];
 // Vercel serves `dist/` (see `vercel.json`), so build there.
 const OUTPUT_DIR = 'dist';
 const DEV_MODE = process.argv.includes('--dev');
-const ENABLE_LIVE_RELOAD = true;
+const DEV_SERVER_HOST = 'localhost';
+const DEV_SERVER_PORT = 3000;
+const ENABLE_LIVE_RELOAD = DEV_MODE && !process.argv.includes('--no-live-reload');
 
 // esbuild configuration
 const buildConfig = {
@@ -31,7 +33,7 @@ const buildConfig = {
 // Live reload script injected in dev mode
 const liveReloadScript = `
 (function() {
-  const source = new EventSource('http://localhost:35729/esbuild');
+  const source = new EventSource('http://${DEV_SERVER_HOST}:${DEV_SERVER_PORT}/esbuild');
   source.addEventListener('change', () => {
     location.reload();
   });
@@ -72,11 +74,14 @@ async function build() {
       // Serve files with live reload
       const { host, port } = await ctx.serve({
         servedir: OUTPUT_DIR,
-        port: 3000,
-        host: 'localhost',
+        port: DEV_SERVER_PORT,
+        host: DEV_SERVER_HOST,
       });
 
       console.log(`✅ Development server running at http://${host}:${port}`);
+      if (!ENABLE_LIVE_RELOAD) {
+        console.log('ℹ️ Live reload disabled (use --no-live-reload to keep it disabled)');
+      }
       console.log(`📦 Add this to your Webflow project settings:\n`);
       console.log(`<script src="http://${host}:${port}/index.js"></script>`);
       console.log(`<link rel="stylesheet" href="http://${host}:${port}/index.css">`);

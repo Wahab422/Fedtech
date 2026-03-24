@@ -1,9 +1,10 @@
 import { initGlobal } from './global';
 import { logger } from './utils/logger';
 
+document.documentElement.classList.add('has-js');
+
 const pageRegistry = {
   home: () => import('./pages/home').then((m) => m.initHomePage),
-  events: () => import('./pages/events').then((m) => m.initEventsPage),
 };
 
 let cachedPageName = null;

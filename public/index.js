@@ -1,17 +1,3 @@
-
-(function() {
-  const source = new EventSource('http://localhost:35729/esbuild');
-  source.addEventListener('change', () => {
-    location.reload();
-  });
-  source.addEventListener('error', (e) => {
-    if (e.target.readyState === EventSource.CLOSED) {
-      console.log('[Live Reload] Connection closed');
-    }
-  });
-  console.log('[Live Reload] Listening for changes...');
-})();
-
 (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -652,81 +638,6 @@
       window.removeEventListener("resize", checkInView);
     };
   }
-  function smoothScrollTo(element, target, offset = 0, options = {}) {
-    if (typeof document === "undefined") {
-      return () => {
-      };
-    }
-    const triggers = resolveElementList(element);
-    if (!triggers.length) {
-      logger.warn("[smoothScrollTo] Trigger element(s) not found:", element);
-      return () => {
-      };
-    }
-    const handler = (event) => {
-      if (event?.preventDefault) {
-        event.preventDefault();
-      }
-      const resolvedTarget = typeof target === "function" ? target(event, event?.currentTarget) : target;
-      lenisSmoothScrollTo(resolvedTarget, offset, options);
-    };
-    triggers.forEach((trigger) => {
-      const existingHandler = smoothScrollHandlers.get(trigger);
-      if (existingHandler) {
-        trigger.removeEventListener("click", existingHandler);
-      }
-      trigger.addEventListener("click", handler);
-      smoothScrollHandlers.set(trigger, handler);
-    });
-    return () => {
-      triggers.forEach((trigger) => {
-        const savedHandler = smoothScrollHandlers.get(trigger);
-        if (savedHandler) {
-          trigger.removeEventListener("click", savedHandler);
-          smoothScrollHandlers.delete(trigger);
-        }
-      });
-    };
-  }
-  function lenisSmoothScrollTo(target, offset = 0, options = {}) {
-    if (typeof document === "undefined") {
-      return;
-    }
-    const element = resolveElement(target);
-    if (!element) {
-      logger.warn("[lenisSmoothScrollTo] Target not found:", target);
-      return;
-    }
-    const lenis2 = getLenis();
-    if (!lenis2) {
-      nativeScrollToElement(element, offset);
-      return;
-    }
-    const navbar = document.querySelector("[data-navbar]");
-    const navbarOffset = navbar ? navbar.offsetHeight : 0;
-    const lenisOptions = {
-      duration: 1.2,
-      ...options
-    };
-    if (typeof lenisOptions.offset !== "number") {
-      lenisOptions.offset = -(offset + navbarOffset);
-    }
-    lenis2.scrollTo(element, lenisOptions);
-  }
-  function resolveElement(ref) {
-    if (!ref || typeof document === "undefined")
-      return null;
-    if (typeof ref === "string") {
-      return document.querySelector(ref);
-    }
-    if (ref === window || ref === document || ref === document.documentElement) {
-      return document.documentElement;
-    }
-    if (isDomElement(ref)) {
-      return ref;
-    }
-    return null;
-  }
   function resolveElementList(ref) {
     if (!ref || typeof document === "undefined")
       return [];
@@ -743,17 +654,6 @@
       return ref.filter(isDomElement);
     }
     return [];
-  }
-  function nativeScrollToElement(target, offset = 0) {
-    if (typeof window === "undefined" || !target) {
-      return;
-    }
-    const elementPosition = target.getBoundingClientRect().top + window.pageYOffset;
-    const destination = elementPosition - offset;
-    window.scrollTo({
-      top: destination,
-      behavior: "smooth"
-    });
   }
   function isDomElement(node) {
     return typeof Element !== "undefined" && node instanceof Element;
@@ -803,12 +703,10 @@
       document.head.appendChild(script);
     });
   }
-  var smoothScrollHandlers;
   var init_helpers = __esm({
     "src/utils/helpers.js"() {
       init_logger();
       init_lenis2();
-      smoothScrollHandlers = /* @__PURE__ */ new WeakMap();
     }
   });
 
@@ -995,8 +893,15 @@
         logger.warn("Carousel viewport not found in slider:", slider);
         return;
       }
-      const nextBtn = slider.querySelector("[slider-next-btn]") || slider.querySelector("[carousel-next-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]') || slider.querySelectorAll("[carousel-btn]")[1];
-      const prevBtn = slider.querySelector("[slider-prev-btn]") || slider.querySelector("[carousel-prev-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]') || slider.querySelectorAll("[carousel-btn]")[0];
+      const navButtonsWrapper = slider.querySelector("[carousel-btns]") || slider.querySelector(".carousel-btns") || slider.querySelector(".arrow-btns");
+      const fallbackNavButtons = navButtonsWrapper ? Array.from(navButtonsWrapper.querySelectorAll("[carousel-btn], .arrow-btn, button")) : [];
+      const explicitNextBtn = slider.querySelector("[slider-next-btn]") || slider.querySelector("[carousel-next-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]');
+      const explicitPrevBtn = slider.querySelector("[slider-prev-btn]") || slider.querySelector("[carousel-prev-btn]") || slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]');
+      const prevBtn = explicitPrevBtn || fallbackNavButtons[0] || null;
+      let nextBtn = explicitNextBtn || (fallbackNavButtons.length > 1 ? fallbackNavButtons[1] : fallbackNavButtons[0]) || null;
+      if (prevBtn && nextBtn && prevBtn === nextBtn) {
+        nextBtn = null;
+      }
       let slideButtons = [];
       const customProgressBar = slider.querySelector(".carousel-progress-bar");
       const syncId = slider.getAttribute("data-sync");
@@ -1063,7 +968,7 @@
         });
       }
       function ensureDots() {
-        let dotsContainer = slider.querySelector("[carousel-dots]") || slider.querySelector(".carousel-dots");
+        const dotsContainer = slider.querySelector("[carousel-dots]") || slider.querySelector(".carousel-dots");
         const slides = getSlides();
         if (!slides.length)
           return;
@@ -2058,7 +1963,7 @@
   });
 
   // src/functions/eventsList.js
-  function initEventsList(cleanupFunctions5 = []) {
+  function initEventsList(cleanupFunctions4 = []) {
     window.FinsweetAttributes || (window.FinsweetAttributes = []);
     window.FinsweetAttributes.push([
       "list",
@@ -2082,41 +1987,9 @@
         observer.observe(listEl, {
           childList: true
         });
-        cleanupFunctions5.push(() => observer.disconnect());
+        cleanupFunctions4.push(() => observer.disconnect());
         const initialItems = document.querySelectorAll("[event-item]");
         updateEventItems(initialItems);
-      }
-    ]);
-  }
-  function countEventsStatus() {
-    window.FinsweetAttributes || (window.FinsweetAttributes = []);
-    window.FinsweetAttributes.push([
-      "list",
-      () => {
-        const items = document.querySelectorAll("[event-item]");
-        let pastCount = 0;
-        let upcomingCount = 0;
-        const today = /* @__PURE__ */ new Date();
-        today.setHours(0, 0, 0, 0);
-        items.forEach((item) => {
-          const dateEl = item.querySelector("[event-date]");
-          if (!dateEl)
-            return;
-          const eventDate = new Date(dateEl.textContent.trim());
-          if (isNaN(eventDate.getTime()))
-            return;
-          eventDate.setHours(0, 0, 0, 0);
-          if (eventDate >= today)
-            upcomingCount++;
-          else
-            pastCount++;
-        });
-        const pastEl = document.querySelector("[past-events-count]");
-        const upcomingEl = document.querySelector("[upcoming-events-count]");
-        if (pastEl)
-          pastEl.textContent = pastCount;
-        if (upcomingEl)
-          upcomingEl.textContent = upcomingCount;
       }
     ]);
   }
@@ -2222,43 +2095,6 @@
     }
   });
 
-  // src/pages/events.js
-  var events_exports = {};
-  __export(events_exports, {
-    cleanupEventsPage: () => cleanupEventsPage,
-    initEventsPage: () => initEventsPage
-  });
-  async function initEventsPage() {
-    logger.log("\u{1F4C5} Events page initialized");
-    try {
-      initEventsList(cleanupFunctions4);
-      countEventsStatus(cleanupFunctions4);
-      smoothScrollTo("#scroll-to-events-btn", "#events-filter", 80);
-    } catch (error) {
-      handleError(error, "Events Page Initialization");
-    }
-  }
-  function cleanupEventsPage() {
-    cleanupFunctions4.forEach((cleanup) => {
-      try {
-        cleanup();
-      } catch (error) {
-        handleError(error, "Events Page Cleanup");
-      }
-    });
-    cleanupFunctions4.length = 0;
-  }
-  var cleanupFunctions4;
-  var init_events = __esm({
-    "src/pages/events.js"() {
-      init_helpers();
-      init_logger();
-      init_eventsList();
-      init_helpers();
-      cleanupFunctions4 = [];
-    }
-  });
-
   // src/global/index.js
   init_lenis2();
 
@@ -2269,6 +2105,7 @@
   function initNavbar() {
     logger.log("\u{1F4F1} Navbar initialized");
     try {
+      const eventCleanups = [];
       const toggleElements = document.querySelectorAll("[toggle-class]");
       if (toggleElements.length) {
         const getGroupElements = (el, className) => {
@@ -2278,7 +2115,7 @@
         const shouldRemoveOnOutside = (el) => {
           return el.getAttribute("remove-class-outside") === "true";
         };
-        document.addEventListener("click", (e2) => {
+        const handleDocumentClick = (e2) => {
           const trigger = e2.target.closest("[toggle-trigger]");
           const clicked = trigger ? trigger.closest("[toggle-class]") : e2.target.closest("[toggle-class]");
           if (clicked) {
@@ -2305,35 +2142,65 @@
               el.classList.remove(className);
             });
           }
-        });
+        };
+        document.addEventListener("click", handleDocumentClick);
+        eventCleanups.push(() => document.removeEventListener("click", handleDocumentClick));
         toggleElements.forEach((el) => {
           if (el.getAttribute("toggle-on") === "hover" && window.innerWidth > 768) {
             const className = el.getAttribute("toggle-class");
             const triggers = el.querySelectorAll("[toggle-trigger]");
             const groupEls = getGroupElements(el, className);
             triggers.forEach((trigger) => {
-              trigger.addEventListener("mouseenter", () => {
+              const handleMouseEnter = () => {
                 groupEls.forEach((i) => i.classList.remove(className));
                 el.classList.add(className);
-              });
+              };
+              trigger.addEventListener("mouseenter", handleMouseEnter);
+              eventCleanups.push(() => trigger.removeEventListener("mouseenter", handleMouseEnter));
             });
             if (shouldRemoveOnOutside(el)) {
-              el.addEventListener("mouseleave", () => {
+              const handleMouseLeave = () => {
                 el.classList.remove(className);
-              });
+              };
+              el.addEventListener("mouseleave", handleMouseLeave);
+              eventCleanups.push(() => el.removeEventListener("mouseleave", handleMouseLeave));
             }
           }
         });
       }
-      cleanupFunctions.push(() => {
-        window.removeEventListener("scroll", () => {
+      const nav = document.querySelector("[nav]");
+      const menuBtn = document.querySelector("[menu-button]");
+      if (menuBtn && nav) {
+        const handleMenuClick = () => {
+          nav.classList.toggle("open");
+        };
+        menuBtn.addEventListener("click", handleMenuClick);
+        eventCleanups.push(() => menuBtn.removeEventListener("click", handleMenuClick));
+      }
+      if (nav) {
+        let prevScrollPos = window.pageYOffset;
+        const scrollHandler = () => {
           const currentScrollPos = window.pageYOffset;
           if (currentScrollPos > 0) {
             nav.classList.add("scrolled");
           } else {
             nav.classList.remove("scrolled");
           }
-        });
+          if (window.innerWidth > 768) {
+            if (prevScrollPos > currentScrollPos) {
+              nav.classList.remove("scroll-down");
+            } else {
+              nav.classList.add("scroll-down");
+            }
+          }
+          prevScrollPos = currentScrollPos;
+        };
+        window.addEventListener("scroll", scrollHandler, { passive: true });
+        scrollHandler();
+        eventCleanups.push(() => window.removeEventListener("scroll", scrollHandler));
+      }
+      cleanupFunctions.push(() => {
+        eventCleanups.forEach((cleanup) => cleanup());
       });
     } catch (error) {
       handleError(error, "Navbar Initialization");
@@ -2356,14 +2223,13 @@
   var cleanupFunctions2 = [];
   function initFooter() {
     logger.log("\u{1F9B6} Footer initialized");
-    const backToTopButton = document.querySelector("#data-back-to-top");
+    const backToTopButton = document.querySelector("[data-back-to-top]");
     if (backToTopButton) {
       const handleClick = () => {
         backToTop();
       };
       backToTopButton.addEventListener("click", handleClick, { passive: true });
       cleanupFunctions2.push(() => {
-        window.removeEventListener("scroll", scrollHandler);
         backToTopButton.removeEventListener("click", handleClick);
       });
     }
@@ -3757,9 +3623,9 @@
 
   // src/index.js
   init_logger();
+  document.documentElement.classList.add("has-js");
   var pageRegistry = {
-    home: () => Promise.resolve().then(() => (init_home(), home_exports)).then((m) => m.initHomePage),
-    events: () => Promise.resolve().then(() => (init_events(), events_exports)).then((m) => m.initEventsPage)
+    home: () => Promise.resolve().then(() => (init_home(), home_exports)).then((m) => m.initHomePage)
   };
   var cachedPageName = null;
   function getCurrentPage() {

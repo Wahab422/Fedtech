@@ -100,7 +100,7 @@ function updateEventItems(items) {
 
     if (diffInDays > 30) {
       const diffInMonths = Math.floor(diffInDays / 30);
-      pillTag.textContent = diffInMonths === 1 ? 'month left' : `${diffInMonths} months left`;
+      pillTag.textContent = diffInMonths === 1 ? '1 Month left' : `${diffInMonths} months left`;
       pillTag.setAttribute('pill-color', 'green');
     } else if (diffInDays > 0) {
       pillTag.textContent = `${diffInDays} day${diffInDays > 1 ? 's' : ''} left`;
@@ -111,5 +111,6 @@ function updateEventItems(items) {
     } else {
       pillTag.textContent = 'Past event';
     }
+    pillTag.style.opacity = '1';
   });
 }

@@ -15,7 +15,6 @@ export function initFooter() {
     backToTopButton.addEventListener('click', handleClick, { passive: true });
 
     cleanupFunctions.push(() => {
-      window.removeEventListener('scroll', scrollHandler);
       backToTopButton.removeEventListener('click', handleClick);
     });
   }

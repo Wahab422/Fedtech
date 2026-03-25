@@ -110,17 +110,17 @@ async function actuallyInitLenis() {
 
     // Create Lenis instance with optimized configuration
     lenis = new Lenis({
-      duration: 1.2, // Animation duration in seconds
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Easing function
-      orientation: 'vertical', // 'vertical' or 'horizontal'
-      gestureOrientation: 'vertical', // 'vertical', 'horizontal', or 'both'
-      smoothWheel: true, // Enable smooth scrolling for mouse wheel
-      wheelMultiplier: 1, // Mouse wheel sensitivity
-      smoothTouch: false, // Disabled for better mobile performance
-      touchMultiplier: 2, // Touch sensitivity
-      infinite: false, // Infinite scrolling
-      autoResize: true, // Auto resize on window resize
-      lerp: 0.1, // Lower = smoother but slower, higher = faster but less smooth
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      smoothTouch: false,
+      touchMultiplier: 2,
+      infinite: false,
+      autoResize: true,
+      lerp: 0.1,
     });
 
     // RAF loop for Lenis
@@ -148,7 +148,8 @@ async function actuallyInitLenis() {
       });
 
       // Follow-up refresh for async content insertion.
-      setTimeout(refresh, 250);
+      setTimeout(refresh, 500);
+      logger.log('✅ Lenis Refresh Scheduled');
     };
 
     // Handle anchor links (Performance optimized with event delegation)
@@ -182,12 +183,11 @@ async function actuallyInitLenis() {
       { passive: false } // Can't be passive because we preventDefault
     );
 
-    // Handle Webflow pagination "next" clicks (refresh Lenis + ScrollTrigger)
-    // and Webflow checkbox interactions which can change layout.
+
     document.addEventListener('click', (e) => {
       const target = e.target;
       if (!target) return;
-      const shouldRefresh = target.closest('.w-pagination-next') || target.closest('.w-radio');
+      const shouldRefresh = target.closest('.w-pagination-wrapper') || target.closest('.w-radio');
       if (!shouldRefresh) return;
       scheduleScrollRefresh();
     });

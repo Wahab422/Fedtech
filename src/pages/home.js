@@ -9,6 +9,7 @@ export async function initHomePage() {
   logger.log('🏠 Home page initialized');
 
   try {
+    updateNextEventDate();
     initCarousel();
     initTabs();
     initEventsList(cleanupFunctions);
@@ -50,4 +51,45 @@ export function cleanupHomePage() {
     }
   });
   cleanupFunctions.length = 0;
+}
+
+function updateNextEventDate() {
+  const homeHeroSliderComp = document.querySelector('#home-hero-slider-comp');
+  if (!homeHeroSliderComp) return;
+
+  const now = new Date();
+  const slides = Array.from(homeHeroSliderComp.querySelectorAll('[role="listitem"]'));
+
+  let nextEventDate = null;
+  let nextEventHref = '';
+
+  for (const slide of slides) {
+    const dateEl = slide.querySelector('[data-event="event-date-time"]');
+    if (!dateEl) continue;
+
+    const eventDate = new Date(dateEl.textContent.trim());
+    if (isNaN(eventDate)) continue;
+
+    if (eventDate <= now) {
+      slide.remove();
+    } else {
+      nextEventDate = eventDate;
+      nextEventHref = slide.querySelector('a')?.href || '';
+      break;
+    }
+  }
+
+  const counter = homeHeroSliderComp.querySelector('#next-event-coming-in');
+  if (counter && nextEventDate) {
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysUntil = Math.ceil((nextEventDate - now) / msPerDay);
+    counter.textContent = daysUntil + ' day' + (daysUntil !== 1 ? 's' : '');
+  } else if (counter) {
+    counter.textContent = 'No upcoming events';
+  }
+
+  const nextEventLink = homeHeroSliderComp.querySelector('#next-event-coming-link');
+  if (nextEventLink) {
+    nextEventLink.href = nextEventHref;
+  }
 }

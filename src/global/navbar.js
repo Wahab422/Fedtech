@@ -14,6 +14,8 @@ export function initNavbar() {
   logger.log('📱 Navbar initialized');
 
   try {
+    const eventCleanups = [];
+
     // Toggle elements
     const toggleElements = document.querySelectorAll('[toggle-class]');
 
@@ -35,7 +37,7 @@ export function initNavbar() {
       /************************
        * CLICK HANDLING
        *************************/
-      document.addEventListener('click', (e) => {
+      const handleDocumentClick = (e) => {
         const trigger = e.target.closest('[toggle-trigger]');
         const clicked = trigger
           ? trigger.closest('[toggle-class]')
@@ -68,7 +70,9 @@ export function initNavbar() {
             el.classList.remove(className);
           });
         }
-      });
+      };
+      document.addEventListener('click', handleDocumentClick);
+      eventCleanups.push(() => document.removeEventListener('click', handleDocumentClick));
 
       /************************
        * HOVER HANDLING (DESKTOP)
@@ -81,17 +85,21 @@ export function initNavbar() {
 
           // OPEN on hover (any trigger)
           triggers.forEach((trigger) => {
-            trigger.addEventListener('mouseenter', () => {
+            const handleMouseEnter = () => {
               groupEls.forEach((i) => i.classList.remove(className));
               el.classList.add(className);
-            });
+            };
+            trigger.addEventListener('mouseenter', handleMouseEnter);
+            eventCleanups.push(() => trigger.removeEventListener('mouseenter', handleMouseEnter));
           });
 
           // CLOSE on leave ONLY if opted-in
           if (shouldRemoveOnOutside(el)) {
-            el.addEventListener('mouseleave', () => {
+            const handleMouseLeave = () => {
               el.classList.remove(className);
-            });
+            };
+            el.addEventListener('mouseleave', handleMouseLeave);
+            eventCleanups.push(() => el.removeEventListener('mouseleave', handleMouseLeave));
           }
         }
       });
@@ -100,33 +108,43 @@ export function initNavbar() {
     const nav = document.querySelector('[nav]');
     const menuBtn = document.querySelector('[menu-button]');
     if (menuBtn && nav) {
-      menuBtn.addEventListener('click', () => {
+      const handleMenuClick = () => {
         nav.classList.toggle('open');
-      });
+      };
+      menuBtn.addEventListener('click', handleMenuClick);
+      eventCleanups.push(() => menuBtn.removeEventListener('click', handleMenuClick));
     }
 
-    // let prevScrollPos = window.pageYOffset;
+    if (nav) {
+      let prevScrollPos = window.pageYOffset;
+      const scrollHandler = () => {
+        const currentScrollPos = window.pageYOffset;
 
-    // window.addEventListener('scroll', () => {
-    //   const currentScrollPos = window.pageYOffset;
+        if (currentScrollPos > 0) {
+          nav.classList.add('scrolled');
+        } else {
+          nav.classList.remove('scrolled');
+        }
 
-    //   // Scrolled state
-    //   if (currentScrollPos > 0) {
-    //     nav.classList.add('scrolled');
-    //   } else {
-    //     nav.classList.remove('scrolled');
-    //   }
+        if (window.innerWidth > 768) {
+          if (prevScrollPos > currentScrollPos) {
+            nav.classList.remove('scroll-down');
+          } else {
+            nav.classList.add('scroll-down');
+          }
+        }
 
-    //   // Scroll direction
-    //   if (window.innerWidth > 768) {
-    //     if (prevScrollPos > currentScrollPos) {
-    //       nav.classList.remove('scroll-down');
-    //     } else {
-    //       nav.classList.add('scroll-down');
-    //     }
-    //   }
-    //   prevScrollPos = currentScrollPos;
-    // });
+        prevScrollPos = currentScrollPos;
+      };
+
+      window.addEventListener('scroll', scrollHandler, { passive: true });
+      scrollHandler();
+      eventCleanups.push(() => window.removeEventListener('scroll', scrollHandler));
+    }
+
+    cleanupFunctions.push(() => {
+      eventCleanups.forEach((cleanup) => cleanup());
+    });
   } catch (error) {
     handleError(error, 'Navbar Initialization');
   }

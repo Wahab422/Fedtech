@@ -4,8 +4,12 @@
  *
  * Webflow Setup:
  * - List wrapper: data-custom-loadmore="list"
- * - Button inside list: data-custom-loadmore="btn"
- * - Optional: data-custom-loadmore="item" on each item
+ * - Trigger (pick one):
+ *   - Inside list: any descendant with data-custom-loadmore="btn", or
+ *   - Anywhere in the page: set data-custom-loadmore-button="#your-id" (or any valid
+ *     document.querySelector selector) on the list wrapper — first match wins.
+ * - Optional: data-custom-loadmore="item" on each item (otherwise = direct children
+ *   of the list root, excluding the in-root button when the trigger lives inside)
  *
  * Options (on list wrapper):
  * - data-custom-loadmore-initial="3"  Number of items visible on load
@@ -22,6 +26,7 @@
 import { logger } from '../utils/logger';
 
 const instances = new Map();
+const boundButtons = new WeakSet();
 const SELECTORS = {
   root: '[data-custom-loadmore="list"]',
   button: '[data-custom-loadmore="btn"]',
@@ -91,9 +96,41 @@ function getItems(root, button) {
   return Array.from(root.children).filter((child) => child !== button);
 }
 
+function resolveButton(root) {
+  const externalSelector = getAttrValue(root, [
+    'data-custom-loadmore-button',
+    'data-loadmore-button',
+  ]);
+  if (externalSelector) {
+    try {
+      const el = document.querySelector(externalSelector);
+      if (el) return el;
+      logger.warn(`[LoadMore] data-custom-loadmore-button matched nothing: ${externalSelector}`);
+    } catch (error) {
+      logger.warn(
+        `[LoadMore] Invalid data-custom-loadmore-button selector: ${externalSelector}`,
+        error
+      );
+    }
+  }
+  return root.querySelector(SELECTORS.button);
+}
+
 function createInstance(root) {
-  const button = root.querySelector(SELECTORS.button);
-  if (!button) return null;
+  const button = resolveButton(root);
+  if (!button) {
+    logger.warn(
+      '[LoadMore] No trigger found (add data-custom-loadmore-button on the list or data-custom-loadmore="btn" inside it).'
+    );
+    return null;
+  }
+
+  if (boundButtons.has(button)) {
+    logger.warn(
+      '[LoadMore] That trigger is already used by another list — use a unique element or id per list.'
+    );
+    return null;
+  }
 
   const reducedMotion = prefersReducedMotion();
   const items = getItems(root, button);
@@ -132,6 +169,8 @@ function createInstance(root) {
     return null;
   }
 
+  boundButtons.add(button);
+
   const onClick = (event) => {
     event.preventDefault();
 
@@ -154,6 +193,7 @@ function createInstance(root) {
 
   return () => {
     button.removeEventListener('click', onClick);
+    boundButtons.delete(button);
   };
 }
 
@@ -184,7 +224,9 @@ export function initListLoadMore(options = {}) {
   });
 
   if (initializedCount > 0) {
-    logger.log(`📦 Load more ready (${initializedCount} instance${initializedCount > 1 ? 's' : ''})`);
+    logger.log(
+      `📦 Load more ready (${initializedCount} instance${initializedCount > 1 ? 's' : ''})`
+    );
   }
 
   return () => cleanupListLoadMore();

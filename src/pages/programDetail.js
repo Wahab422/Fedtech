@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { initProgramToc } from '../components/toc';
 import { initCarousel } from 'src/components/carousel';
 import { initAccordionCSS } from 'src/components/accordion';
+import { initListLoadMore } from '../components/listloadmore';
 
 const cleanupFunctions = [];
 
@@ -14,6 +15,7 @@ export function initProgramDetailPage() {
     cleanupFunctions.push(initCarousel());
     //cleanupFunctions.push(initAccordion());
     cleanupFunctions.push(initAccordionCSS());
+    cleanupFunctions.push(initListLoadMore());
     initRegistrationCountdown();
   } catch (error) {
     handleError(error, 'Program Detail Page Initialization');

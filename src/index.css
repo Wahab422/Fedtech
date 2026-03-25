@@ -228,3 +228,65 @@
 .has-js .info-warning__wrap[data-end-date]:not(.is-countdown-ready) .style-label {
   visibility: hidden;
 }
+
+/* Scope only this variant */
+[data-accordion-list='css'][data-accordion-variant='mobile-only'] {
+  --acc-bg: #fff;
+  --acc-border: #d4d3ce;
+  --acc-radius: 10px;
+  --acc-active-head-bg: #fff;
+}
+
+/* Mobile: keep accordion behavior, customize look */
+@media (max-width: 991px) {
+  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion] {
+    border: 1px solid var(--acc-border);
+    border-radius: var(--acc-radius);
+    background: var(--acc-bg);
+  }
+
+  [data-accordion-list='css'][data-accordion-variant='mobile-only']
+    [data-accordion='active']
+    [data-accordion-toggle] {
+    background: var(--acc-active-head-bg);
+  }
+
+  /* Prevent collapsed-content peeking */
+  [data-accordion-list='css'][data-accordion-variant='mobile-only']
+    [data-accordion-body]
+    > .overflow-hidden {
+    overflow: hidden;
+  }
+}
+
+/* Desktop: body only, no accordion chrome */
+@media (min-width: 992px) {
+  [data-accordion-list='css'][data-accordion-variant='mobile-only'] {
+    gap: 0;
+  }
+
+  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion] {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion-toggle] {
+    display: none !important;
+  }
+
+  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion-body] {
+    display: block;
+    grid-template-rows: unset;
+    transition: none;
+    background: transparent;
+  }
+
+  [data-accordion-list='css'][data-accordion-variant='mobile-only']
+    [data-accordion-body]
+    .accordion-content {
+    padding: 0;
+    color: inherit;
+  }
+}

@@ -1,6 +1,7 @@
 import { handleError } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { finsweetService } from '../global/finsweet';
+import { initAccordionCSS } from '../components/accordion';
 
 const cleanupFunctions = [];
 
@@ -10,6 +11,7 @@ export async function initProgramPage() {
   try {
     initDurationRangeLabels();
     initNestedSectorsVisibility();
+    cleanupFunctions.push(initAccordionCSS());
     await finsweetService.waitForAttribute('list');
     //await finsweetService.clearFilters('list');
   } catch (error) {

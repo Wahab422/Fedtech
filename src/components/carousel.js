@@ -56,7 +56,9 @@ let pendingSliders = [];
 const syncedSliderGroups = new Map();
 const VIEWPORT_SELECTOR = '.carousel-wrapper, [carousel-wrapper]';
 const CONTAINER_SELECTOR = '.carousel, [carousel]';
-
+const BTNS_WRAPPER_SELECTOR = '[carousel-btns], .carousel-btns, .arrow-btns';
+const PREV_BTN_SELECTOR = '[carousel-prev-btn], .carousel-btns .btn[aria-label="Previous slide"]';
+const NEXT_BTN_SELECTOR = '[carousel-next-btn], .carousel-btns .btn[aria-label="Next slide"]';
 /**
  * Load carousel library from CDN
  */
@@ -118,6 +120,21 @@ async function loadAndInitSlider(slider) {
  */
 export function initCarousel() {
   const sliders = document.querySelectorAll('[data-carousel]');
+  // #region agent log
+  fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+    body: JSON.stringify({
+      sessionId: 'bec643',
+      runId: 'pre-fix',
+      hypothesisId: 'H2',
+      location: 'carousel.js:initCarousel',
+      message: 'initCarousel invoked',
+      data: { sliderCount: sliders.length },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
   if (!sliders.length) return;
 
   logger.log(`⏳ Found ${sliders.length} carousel(s) - will load when visible...`);
@@ -153,6 +170,24 @@ function initializeCarousels(sliderList) {
   if (!sliderList || !sliderList.length) return;
 
   sliderList.forEach((slider) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+      body: JSON.stringify({
+        sessionId: 'bec643',
+        runId: 'pre-fix',
+        hypothesisId: 'H1',
+        location: 'carousel.js:initializeCarousels:entry',
+        message: 'slider init entry',
+        data: {
+          alreadyInitialized: Boolean(slider._carouselInitialized),
+          hasObservedAttr: slider.hasAttribute('data-carousel-observed'),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     if (slider._carouselInitialized) return;
     slider._carouselInitialized = true;
 
@@ -161,26 +196,34 @@ function initializeCarousels(sliderList) {
     const carouselContainer = slider.querySelector(CONTAINER_SELECTOR);
 
     if (!carouselViewport) {
+      // #region agent log
+      fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+        body: JSON.stringify({
+          sessionId: 'bec643',
+          runId: 'pre-fix',
+          hypothesisId: 'H1',
+          location: 'carousel.js:initializeCarousels:missingViewport',
+          message: 'missing viewport after initialized flag set',
+          data: { initializedFlag: Boolean(slider._carouselInitialized) },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       logger.warn('Carousel viewport not found in slider:', slider);
       return;
     }
 
-    const navButtonsWrapper =
-      slider.querySelector('[carousel-btns]') ||
-      slider.querySelector('.carousel-btns') ||
-      slider.querySelector('.arrow-btns');
+    const navButtonsWrapper = slider.querySelector(BTNS_WRAPPER_SELECTOR);
     const fallbackNavButtons = navButtonsWrapper
       ? Array.from(navButtonsWrapper.querySelectorAll('[carousel-btn], .arrow-btn, button'))
       : [];
 
     const explicitNextBtn =
-      slider.querySelector('[slider-next-btn]') ||
-      slider.querySelector('[carousel-next-btn]') ||
-      slider.querySelector('.carousel-btns .btn[aria-label="Next slide"]');
+      slider.querySelector('[slider-next-btn]') || slider.querySelector(NEXT_BTN_SELECTOR);
     const explicitPrevBtn =
-      slider.querySelector('[slider-prev-btn]') ||
-      slider.querySelector('[carousel-prev-btn]') ||
-      slider.querySelector('.carousel-btns .btn[aria-label="Previous slide"]');
+      slider.querySelector('[slider-prev-btn]') || slider.querySelector(PREV_BTN_SELECTOR);
 
     const prevBtn = explicitPrevBtn || fallbackNavButtons[0] || null;
     let nextBtn =
@@ -233,6 +276,7 @@ function initializeCarousels(sliderList) {
     const cleanupTasks = [];
     let scrollToIndex = () => {};
     let restartAutoplay = null;
+    let lastButtonStateKey = null;
 
     function getSlides() {
       if (carouselContainer) {
@@ -393,7 +437,59 @@ function initializeCarousels(sliderList) {
       const canPrev = carouselApi.canScrollPrev();
       const canNext = carouselApi.canScrollNext();
       const bothDisabled = !canPrev && !canNext;
+      // #region agent log
+      fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+        body: JSON.stringify({
+          sessionId: 'bec643',
+          runId: 'pre-fix',
+          hypothesisId: 'H4',
+          location: 'carousel.js:updateButtonStates',
+          message: 'button state computed',
+          data: {
+            canPrev,
+            canNext,
+            bothDisabled,
+            hasNavWrapper: Boolean(navButtonsWrapper),
+            hasPrev: Boolean(prevBtn),
+            hasNext: Boolean(nextBtn),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      const stateKey = JSON.stringify({
+        canPrev,
+        canNext,
+        bothDisabled,
+        hasNavWrapper: Boolean(navButtonsWrapper),
+        hasPrev: Boolean(prevBtn),
+        hasNext: Boolean(nextBtn),
+      });
 
+      if (stateKey === lastButtonStateKey) return;
+      lastButtonStateKey = stateKey;
+
+      // #region agent log
+      fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+        body: JSON.stringify({
+          sessionId: 'bec643',
+          runId: 'post-fix',
+          hypothesisId: 'H6',
+          location: 'carousel.js:updateButtonStates:domWrite',
+          message: 'button DOM update applied',
+          data: { canPrev, canNext, bothDisabled },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      if (navButtonsWrapper) {
+        navButtonsWrapper.style.display = bothDisabled ? 'none' : '';
+        navButtonsWrapper.setAttribute('aria-hidden', String(bothDisabled));
+      }
       if (prevBtn) {
         prevBtn.style.pointerEvents = canPrev ? 'auto' : 'none';
         prevBtn.style.opacity = canPrev ? '1' : '0.5';
@@ -665,6 +761,25 @@ export function getCarouselInstance(selector) {
  */
 export function destroyCarousels() {
   document.querySelectorAll('[data-carousel]').forEach((slider) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+      body: JSON.stringify({
+        sessionId: 'bec643',
+        runId: 'pre-fix',
+        hypothesisId: 'H2',
+        location: 'carousel.js:destroyCarousels:entry',
+        message: 'destroy slider entry',
+        data: {
+          initialized: Boolean(slider._carouselInitialized),
+          keyboardSetup: Boolean(slider._keyboardSetup),
+          hasCleanup: Array.isArray(slider._carouselCleanup),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     if (Array.isArray(slider._carouselCleanup)) {
       slider._carouselCleanup.forEach((cleanup) => {
         try {
@@ -685,6 +800,21 @@ export function destroyCarousels() {
   });
 
   syncedSliderGroups.clear();
+  // #region agent log
+  fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+    body: JSON.stringify({
+      sessionId: 'bec643',
+      runId: 'pre-fix',
+      hypothesisId: 'H3',
+      location: 'carousel.js:destroyCarousels:exit',
+      message: 'destroy complete and sync groups cleared',
+      data: { groupCount: syncedSliderGroups.size },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 }
 
 /**
@@ -701,6 +831,21 @@ function registerSyncedSlider(syncId, carouselApi) {
 
   const group = syncedSliderGroups.get(syncId);
   group.add(carouselApi);
+  // #region agent log
+  fetch('http://127.0.0.1:7904/ingest/28d5dfef-4134-4721-9a33-0b2780d3a11f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bec643' },
+    body: JSON.stringify({
+      sessionId: 'bec643',
+      runId: 'pre-fix',
+      hypothesisId: 'H3',
+      location: 'carousel.js:registerSyncedSlider',
+      message: 'synced slider registered',
+      data: { syncId, groupSize: group.size },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   const syncHandler = () => {
     const targetIndex = carouselApi.selectedScrollSnap();

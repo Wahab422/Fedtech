@@ -46,7 +46,7 @@
   transition: grid-template-rows 0.55s cubic-bezier(0.35, 0, 0.2, 1);
 }
 
-[data-accordion-list='css'] [data-accordion-body] > * {
+[data-accordion-list='css'] [data-accordion-body]>* {
   min-height: 0;
 }
 
@@ -132,19 +132,11 @@
   opacity: 0;
 }
 
-[data-accordion-list='css']
-  [data-accordion='active']
-  [data-accordion-toggle]
-  .corner-icon.for-btn
-  .hover-icon {
+[data-accordion-list='css'] [data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn .hover-icon {
   opacity: 0;
 }
 
-[data-accordion-list='css']
-  [data-accordion='active']
-  [data-accordion-toggle]
-  .corner-icon.for-btn
-  .hover-icons::after {
+[data-accordion-list='css'] [data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn .hover-icons::after {
   opacity: 1;
 }
 
@@ -197,14 +189,12 @@
   content: none;
 }
 
-[data-page='program']
-  .program-card__sectors[fs-list-element='nest-target'][fs-list-nest='sectors'] {
+[data-page='program'] .program-card__sectors[fs-list-element='nest-target'][fs-list-nest='sectors'] {
   opacity: 0;
   transition: opacity 220ms ease;
 }
 
-[data-page='program']
-  .program-card__sectors[fs-list-element='nest-target'][fs-list-nest='sectors'].is-nest-ready {
+[data-page='program'] .program-card__sectors[fs-list-element='nest-target'][fs-list-nest='sectors'].is-nest-ready {
   opacity: 1;
 }
 
@@ -213,9 +203,7 @@
   overflow: hidden;
 }
 
-[data-page='program']
-  .event-detail-tag.v2
-  .program-card__sectors[fs-list-element='nest-target'][fs-list-nest='sectors'] {
+[data-page='program'] .event-detail-tag.v2 .program-card__sectors[fs-list-element='nest-target'][fs-list-nest='sectors'] {
   display: block;
   min-height: 1.25em;
   max-width: 100%;
@@ -229,6 +217,7 @@
   visibility: hidden;
 }
 
+<<<<<<< Updated upstream
 /* Scope only this variant */
 [data-accordion-list='css'][data-accordion-variant='mobile-only'] {
   --acc-bg: #fff;
@@ -290,3 +279,6 @@
     color: inherit;
   }
 }
+=======
+
+>>>>>>> Stashed changes

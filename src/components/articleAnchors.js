@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 const DEFAULT_SELECTORS = {
   articleBody: '#article-body',
   anchor: '[anchor]',
+  tocElement: '[toc-element]',
   anchorsWrapper: '[anchors-wrapper]',
   anchorsList: '[anchors-list]',
   anchorTemplate: '[anchor-element]',
@@ -13,7 +14,7 @@ const DEFAULT_SELECTORS = {
 };
 
 const navbar = document.querySelector('.nav');
-const offset = navbar ? navbar.offsetHeight - 20 : 0;
+const offset = navbar ? navbar.offsetHeight + 10 : 0;
 
 const DEFAULT_OPTIONS = {
   offset: offset,
@@ -37,6 +38,23 @@ function slugifyAnchorId(value) {
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
+}
+
+function getUniqueAnchorId(baseId, usedIds, currentElement) {
+  let uniqueId = baseId || 'anchor';
+  let suffix = 1;
+  while (usedIds.has(uniqueId)) {
+    uniqueId = `${baseId || 'anchor'}-${suffix}`;
+    suffix += 1;
+  }
+  let existingElement = document.getElementById(uniqueId);
+  while (existingElement && existingElement !== currentElement) {
+    uniqueId = `${baseId || 'anchor'}-${suffix}`;
+    suffix += 1;
+    existingElement = document.getElementById(uniqueId);
+  }
+  usedIds.add(uniqueId);
+  return uniqueId;
 }
 
 /**
@@ -89,14 +107,16 @@ export function initArticleAnchors(options = {}) {
 
   replaceAnchorPlaceholders(articleBody);
 
-  const anchors = document.querySelectorAll(`${selectors.articleBody} ${selectors.anchor}`);
+  const sectionTargets = articleBody
+    ? Array.from(articleBody.querySelectorAll(`${selectors.anchor}, ${selectors.tocElement}`))
+    : [];
 
   if (!anchorsWrapper) {
     logger.warn('[initArticleAnchors] Anchor list wrapper not found:', selectors.anchorsWrapper);
     return () => { };
   }
 
-  if (!anchors.length) {
+  if (!sectionTargets.length) {
     anchorsWrapper.classList.add('hide');
     anchorsWrapper.setAttribute('aria-hidden', 'true');
     return () => {
@@ -123,11 +143,21 @@ export function initArticleAnchors(options = {}) {
   const generatedAnchors = [];
   const cleanupHandlers = [];
   const anchorIdToItem = new Map();
+  const usedAnchorIds = new Set();
   let scrollEndTimeoutId = null;
 
-  anchors.forEach((anchor, index) => {
-    const anchorID = anchor.id || `anchor_${index}`;
-    if (!anchor.id) anchor.setAttribute('id', anchorID);
+  sectionTargets.forEach((target, index) => {
+    const isTocElement = target.matches(selectors.tocElement);
+    const tocLabel = target.getAttribute('toc-element')?.trim() || '';
+    const sectionLabel = isTocElement ? tocLabel : target.innerHTML;
+    const sectionTextLabel = isTocElement ? tocLabel : target.textContent?.trim() || '';
+
+    const baseId =
+      target.id ||
+      slugifyAnchorId(sectionTextLabel) ||
+      (isTocElement ? `toc-element-${index + 1}` : `anchor_${index}`);
+    const anchorID = getUniqueAnchorId(baseId, usedAnchorIds, target);
+    if (!target.id) target.setAttribute('id', anchorID);
 
     let newAnchorText;
     if (anchorTemplate) {
@@ -139,7 +169,7 @@ export function initArticleAnchors(options = {}) {
     }
 
     const contentTarget = newAnchorText.querySelector(selectors.anchorText) || newAnchorText;
-    contentTarget.innerHTML = anchor.innerHTML;
+    contentTarget.innerHTML = sectionLabel;
 
     if (templateHasAnchorNumber) {
       const numberTarget = newAnchorText.querySelector(selectors.anchorNumber);
@@ -168,7 +198,7 @@ export function initArticleAnchors(options = {}) {
       if (config.preventDefault && e?.preventDefault) e.preventDefault();
       if (scrollEndTimeoutId) clearTimeout(scrollEndTimeoutId);
       setActive(anchorID);
-      lenisSmoothScrollTo(`#${anchorID}`, config.offset, { duration: config.scrollDuration });
+      lenisSmoothScrollTo(`#${anchorID}`, config.offset - 1, { duration: config.scrollDuration });
       scrollEndTimeoutId = setTimeout(
         () => {
           scrollEndTimeoutId = null;
@@ -197,8 +227,8 @@ export function initArticleAnchors(options = {}) {
   };
 
   const getSectionEnd = (i, scrollY) => {
-    if (i < anchors.length - 1) {
-      return anchors[i + 1].getBoundingClientRect().top + scrollY;
+    if (i < sectionTargets.length - 1) {
+      return sectionTargets[i + 1].getBoundingClientRect().top + scrollY;
     }
     return articleBody.getBoundingClientRect().top + scrollY + articleBody.offsetHeight;
   };
@@ -210,12 +240,12 @@ export function initArticleAnchors(options = {}) {
     const contentTop = scrollY + config.offset;
     let activeId = null;
 
-    for (let i = 0; i < anchors.length; i++) {
-      const anchor = anchors[i];
-      const anchorID = anchor.id;
+    for (let i = 0; i < sectionTargets.length; i++) {
+      const target = sectionTargets[i];
+      const anchorID = target.id;
       if (!anchorID) continue;
 
-      const sectionStart = anchor.getBoundingClientRect().top + scrollY;
+      const sectionStart = target.getBoundingClientRect().top + scrollY;
       const sectionEnd = getSectionEnd(i, scrollY);
       const sectionHeight = sectionEnd - sectionStart;
 

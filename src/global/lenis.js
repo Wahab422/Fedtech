@@ -38,6 +38,32 @@ function nativeScrollTo(target, offset = 0, behavior = 'smooth') {
 }
 
 /**
+ * Schedule Lenis/ScrollTrigger refresh after DOM/layout changes.
+ * Uses an RAF refresh plus an optional delayed follow-up for async insertions.
+ * @param {number} followUpDelayMs - Delay for optional second refresh.
+ */
+export function scheduleScrollRefresh(followUpDelayMs = 500) {
+  if (paginationRefreshScheduled) return;
+  paginationRefreshScheduled = true;
+
+  const refresh = () => {
+    if (lenis?.resize) lenis.resize();
+    if (window.ScrollTrigger?.refresh) window.ScrollTrigger.refresh();
+  };
+
+  requestAnimationFrame(() => {
+    paginationRefreshScheduled = false;
+    refresh();
+  });
+
+  if (followUpDelayMs > 0) {
+    setTimeout(refresh, followUpDelayMs);
+  }
+
+  logger.log('✅ Lenis Refresh Scheduled');
+}
+
+/**
  * Set up anchor and data-scroll-to handlers using native scroll (for touch devices)
  */
 function initNativeScrollHandlers() {
@@ -84,15 +110,7 @@ function initNativeScrollHandlers() {
     if (!target) return;
     const shouldRefresh = target.closest('.w-pagination-next') || target.closest('.w-radio');
     if (!shouldRefresh) return;
-    if (paginationRefreshScheduled) return;
-    paginationRefreshScheduled = true;
-    requestAnimationFrame(() => {
-      paginationRefreshScheduled = false;
-      if (window.ScrollTrigger?.refresh) window.ScrollTrigger.refresh();
-    });
-    setTimeout(() => {
-      if (window.ScrollTrigger?.refresh) window.ScrollTrigger.refresh();
-    }, 150);
+    scheduleScrollRefresh(150);
   });
 }
 
@@ -133,25 +151,6 @@ async function actuallyInitLenis() {
 
     logger.log('✅ Lenis smooth scroll ready');
 
-    const scheduleScrollRefresh = () => {
-      if (paginationRefreshScheduled) return;
-      paginationRefreshScheduled = true;
-
-      const refresh = () => {
-        if (lenis?.resize) lenis.resize();
-        if (window.ScrollTrigger?.refresh) window.ScrollTrigger.refresh();
-      };
-
-      requestAnimationFrame(() => {
-        paginationRefreshScheduled = false;
-        refresh();
-      });
-
-      // Follow-up refresh for async content insertion.
-      setTimeout(refresh, 500);
-      logger.log('✅ Lenis Refresh Scheduled');
-    };
-
     // Handle anchor links (Performance optimized with event delegation)
     document.addEventListener(
       'click',
@@ -183,13 +182,12 @@ async function actuallyInitLenis() {
       { passive: false } // Can't be passive because we preventDefault
     );
 
-
     document.addEventListener('click', (e) => {
       const target = e.target;
       if (!target) return;
       const shouldRefresh = target.closest('.w-pagination-wrapper') || target.closest('.w-radio');
       if (!shouldRefresh) return;
-      scheduleScrollRefresh();
+      scheduleScrollRefresh(500);
     });
 
     // Handle data-scroll-to buttons (Performance optimized with event delegation)

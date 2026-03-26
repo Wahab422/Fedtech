@@ -6,7 +6,10 @@ document.documentElement.classList.add('has-js');
 const pageRegistry = {
   home: () => import('./pages/home').then((m) => m.initHomePage),
   events: () => import('./pages/events').then((m) => m.initEventsPage),
+<<<<<<< Updated upstream
   program: () => import('./pages/program').then((m) => m.initProgramPage),
+=======
+>>>>>>> Stashed changes
   programdetail: () => import('./pages/programDetail').then((m) => m.initProgramDetailPage),
 };
 

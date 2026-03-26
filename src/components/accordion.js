@@ -22,7 +22,7 @@
  * - data-accordion-collapsible="false" - Keep at least one panel open (defaults to true)
  * - data-accordion-event="hover" - Use hover instead of click
  */
-
+import { scheduleScrollRefresh } from '../global/lenis';
 import { handleError } from '../utils/helpers';
 import { logger } from '../utils/logger';
 
@@ -137,6 +137,8 @@ function actuallyInitAccordion(accordion) {
           }
         });
       }
+
+      scheduleScrollRefresh();
     }
 
     // Hover interaction mode

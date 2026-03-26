@@ -1,21 +1,28 @@
-import { handleError } from '../utils/helpers';
+import { appendElement, handleError, loadScript } from '../utils/helpers';
 import { logger } from '../utils/logger';
-import { initProgramToc } from '../components/toc';
 import { initCarousel } from 'src/components/carousel';
 import { initAccordionCSS } from 'src/components/accordion';
-import { initListLoadMore } from '../components/listloadmore';
-
+import { initArticleAnchors } from '../components/articleAnchors';
+import { scheduleScrollRefresh } from '../global/lenis';
 const cleanupFunctions = [];
 
 export function initProgramDetailPage() {
   logger.log('📄 Program detail page initialized');
 
   try {
-    cleanupFunctions.push(initProgramToc());
+    loadScript('https://cdn.jsdelivr.net/npm/@finsweet/attributes-richtext@1/richtext.js').then(
+      () => {
+        cleanupFunctions.push(initArticleAnchors());
+        appendElement('#multi-img-slider-wrap', '#multi-img-slider', { emptyParent: true });
+        appendElement('[testimonials]', '#testimonials-slider');
+        appendElement('[participants get]', '#participants get');
+        scheduleScrollRefresh();
+      }
+    );
+
     cleanupFunctions.push(initCarousel());
     //cleanupFunctions.push(initAccordion());
     cleanupFunctions.push(initAccordionCSS());
-    cleanupFunctions.push(initListLoadMore());
     initRegistrationCountdown();
   } catch (error) {
     handleError(error, 'Program Detail Page Initialization');

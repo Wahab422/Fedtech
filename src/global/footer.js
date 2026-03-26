@@ -6,13 +6,15 @@ const cleanupFunctions = [];
 export function initFooter() {
   logger.log('🦶 Footer initialized');
 
-  const backToTopButton = document.querySelector('#data-back-to-top');
-  if (backToTopButton) {
+  const backToTopButtons = document.querySelectorAll('[data-back-to-top]');
+  if (backToTopButtons.length) {
+    backToTopButtons.forEach((button) => {
+      button.addEventListener('click', handleClick, { passive: true });
+    });
     const handleClick = () => {
       backToTop();
     };
 
-    backToTopButton.addEventListener('click', handleClick, { passive: true });
 
     cleanupFunctions.push(() => {
       backToTopButton.removeEventListener('click', handleClick);

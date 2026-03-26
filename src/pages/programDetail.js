@@ -15,14 +15,35 @@ export function initProgramDetailPage() {
         cleanupFunctions.push(initArticleAnchors());
         appendElement('#multi-img-slider-wrap', '#multi-img-slider', { emptyParent: true });
         appendElement('[testimonials]', '#testimonials-slider');
-        appendElement('[participants get]', '#participants get');
+        appendElement('[participants-get]', '#participants-get');
         scheduleScrollRefresh();
+        if (window.innerWidth < 991) {
+          handleQuickJumps();
+          appendElement('#quick-jumps-body-wrap', '[anchors-list]');
+          function handleQuickJumps() {
+            const accordion = document.querySelector('#quick-jump-accordion');
+            const toggleBtn = accordion.querySelector('[data-accordion-toggle]');
+
+            toggleBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+
+              const isActive = accordion.getAttribute('data-accordion') === 'active';
+
+              accordion.setAttribute('data-accordion', isActive ? 'not-active' : 'active');
+            });
+
+            document.addEventListener('click', (e) => {
+              if (!toggleBtn.contains(e.target)) {
+                accordion.setAttribute('data-accordion', 'not-active');
+              }
+            });
+          }
+        }
       }
     );
-
     cleanupFunctions.push(initCarousel());
-    //cleanupFunctions.push(initAccordion());
     cleanupFunctions.push(initAccordionCSS());
+    separateTextByComma();
     initRegistrationCountdown();
   } catch (error) {
     handleError(error, 'Program Detail Page Initialization');
@@ -111,4 +132,18 @@ function getDaysUntil(endDate) {
   const dayMs = 24 * 60 * 60 * 1000;
 
   return Math.max(0, Math.ceil(diffMs / dayMs));
+}
+
+function separateTextByComma() {
+  const wrappers = document.querySelectorAll('[separate-text-comma]');
+  if (!wrappers.length) return;
+
+  wrappers.forEach((wrapper) => {
+    const items = wrapper.querySelectorAll('.w-dyn-item > div');
+    const texts = Array.from(items)
+      .map((el) => el.textContent.trim())
+      .filter(Boolean);
+    const combinedText = texts.join(', ');
+    wrapper.innerHTML = `<div class="style-label">${combinedText}</div>`;
+  });
 }

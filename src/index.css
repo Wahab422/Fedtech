@@ -13,7 +13,7 @@
   gap: var(--_spacing---12);
 }
 
-[data-accordion-list='css'] [data-accordion] {
+[data-accordion] {
   border: 1px solid var(--limestone-2, #d4d3ce);
   border-radius: var(--_corner---10);
   overflow: clip;
@@ -23,7 +23,7 @@
     border-color 0.35s ease;
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] {
+[data-accordion-toggle] {
   display: flex;
   align-items: center;
   gap: var(--_spacing---16);
@@ -34,11 +34,11 @@
   transition: background-color 0.35s ease;
 }
 
-[data-accordion-list='css'] [data-accordion]:first-child [data-accordion-toggle] {
+[data-accordion]:first-child [data-accordion-toggle] {
   padding-top: var(--_spacing---16) !important;
 }
 
-[data-accordion-list='css'] [data-accordion-body] {
+[data-accordion-body] {
   display: grid;
   grid-template-rows: 0fr;
   min-height: 0;
@@ -46,24 +46,24 @@
   transition: grid-template-rows 0.55s cubic-bezier(0.35, 0, 0.2, 1);
 }
 
-[data-accordion-list='css'] [data-accordion-body]>* {
+[data-accordion-body]>* {
   min-height: 0;
 }
 
-[data-accordion-list='css'] [data-accordion='active'] [data-accordion-body] {
+[data-accordion='active'] [data-accordion-body] {
   grid-template-rows: 1fr !important;
 }
 
-[data-accordion-list='css'] [data-accordion='active'] [data-accordion-toggle] {
+[data-accordion='active'] [data-accordion-toggle] {
   background: var(--lime-hover, #f4f3f1);
 }
 
-[data-accordion-list='css'] [data-accordion-body] .accordion-content {
+[data-accordion-body] .accordion-content {
   padding: var(--_spacing---16);
   color: var(--text-grey, #565656);
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] .corner-icon.for-btn {
+[data-accordion-toggle] .corner-icon.for-btn {
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -74,11 +74,11 @@
   transition: color 0.3s ease;
 }
 
-[data-accordion-list='css'] [data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn {
+[data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn {
   color: var(--carbon, #21201f);
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] .corner-icon.for-btn .corner-curve {
+[data-accordion-toggle] .corner-icon.for-btn .corner-curve {
   flex: 1 1 0;
   height: 100%;
   min-width: 0;
@@ -89,7 +89,7 @@
   border-bottom-left-radius: var(--_corner---4);
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] .corner-icon.for-btn .corner-curve._2 {
+[data-accordion-toggle] .corner-icon.for-btn .corner-curve._2 {
   border-left: 0;
   border-right: 1px solid currentColor;
   border-top-left-radius: 0;
@@ -98,14 +98,14 @@
   border-bottom-right-radius: var(--_corner---4);
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] .corner-icon.for-btn .hover-icons {
+[data-accordion-toggle] .corner-icon.for-btn .hover-icons {
   position: relative;
   width: 0.5rem;
   height: 0.5rem;
   display: block;
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] .corner-icon.for-btn .hover-icons::after {
+[data-accordion-toggle] .corner-icon.for-btn .hover-icons::after {
   content: '';
   position: absolute;
   left: 0;
@@ -119,24 +119,24 @@
   transition: opacity 0.3s ease;
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] .corner-icon.for-btn .hover-icon {
+[data-accordion-toggle] .corner-icon.for-btn .hover-icon {
   width: 0.5rem;
   height: 0.5rem;
   display: block;
   transition: opacity 0.3s ease;
 }
 
-[data-accordion-list='css'] [data-accordion-toggle] .corner-icon.for-btn .hover-icon.absolute {
+[data-accordion-toggle] .corner-icon.for-btn .hover-icon.absolute {
   position: absolute;
   inset: 0;
   opacity: 0;
 }
 
-[data-accordion-list='css'] [data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn .hover-icon {
+[data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn .hover-icon {
   opacity: 0;
 }
 
-[data-accordion-list='css'] [data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn .hover-icons::after {
+[data-accordion='active'] [data-accordion-toggle] .corner-icon.for-btn .hover-icons::after {
   opacity: 1;
 }
 
@@ -217,9 +217,8 @@
   visibility: hidden;
 }
 
-<<<<<<< Updated upstream
 /* Scope only this variant */
-[data-accordion-list='css'][data-accordion-variant='mobile-only'] {
+[data-accordion-variant='mobile-only'] {
   --acc-bg: #fff;
   --acc-border: #d4d3ce;
   --acc-radius: 10px;
@@ -228,57 +227,48 @@
 
 /* Mobile: keep accordion behavior, customize look */
 @media (max-width: 991px) {
-  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion] {
+  [data-accordion-variant='mobile-only'] [data-accordion] {
     border: 1px solid var(--acc-border);
     border-radius: var(--acc-radius);
     background: var(--acc-bg);
   }
 
-  [data-accordion-list='css'][data-accordion-variant='mobile-only']
-    [data-accordion='active']
-    [data-accordion-toggle] {
+  [data-accordion-variant='mobile-only'] [data-accordion='active'] [data-accordion-toggle] {
     background: var(--acc-active-head-bg);
   }
 
   /* Prevent collapsed-content peeking */
-  [data-accordion-list='css'][data-accordion-variant='mobile-only']
-    [data-accordion-body]
-    > .overflow-hidden {
+  [data-accordion-variant='mobile-only'] [data-accordion-body]>.overflow-hidden {
     overflow: hidden;
   }
 }
 
 /* Desktop: body only, no accordion chrome */
 @media (min-width: 992px) {
-  [data-accordion-list='css'][data-accordion-variant='mobile-only'] {
+  [data-accordion-variant='mobile-only'] {
     gap: 0;
   }
 
-  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion] {
+  [data-accordion-variant='mobile-only'] [data-accordion] {
     border: 0;
     border-radius: 0;
     background: transparent;
     overflow: visible;
   }
 
-  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion-toggle] {
+  [data-accordion-variant='mobile-only'] [data-accordion-toggle] {
     display: none !important;
   }
 
-  [data-accordion-list='css'][data-accordion-variant='mobile-only'] [data-accordion-body] {
+  [data-accordion-variant='mobile-only'] [data-accordion-body] {
     display: block;
     grid-template-rows: unset;
     transition: none;
     background: transparent;
   }
 
-  [data-accordion-list='css'][data-accordion-variant='mobile-only']
-    [data-accordion-body]
-    .accordion-content {
+  [data-accordion-variant='mobile-only'] [data-accordion-body] .accordion-content {
     padding: 0;
     color: inherit;
   }
 }
-=======
-
->>>>>>> Stashed changes

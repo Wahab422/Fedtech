@@ -17,7 +17,9 @@ export function initProgramDetailPage() {
         appendElement('[testimonials]', '#testimonials-slider');
         appendElement('[participants-get]', '#participants-get');
         scheduleScrollRefresh();
+        // Handle quick jumps for mobile
         if (window.innerWidth < 991) {
+          if (!document.querySelector('#quick-jump-wrap')) return;
           handleQuickJumps();
           appendElement('#quick-jumps-body-wrap', '[anchors-list]');
           function handleQuickJumps() {

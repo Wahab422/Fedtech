@@ -5,6 +5,7 @@ document.documentElement.classList.add('has-js');
 
 const pageRegistry = {
   home: () => import('./pages/home').then((m) => m.initHomePage),
+  contact: () => import('./pages/contact').then((m) => m.initContactPage),
   events: () => import('./pages/events').then((m) => m.initEventsPage),
   eventsDetail: () => import('./pages/eventsDetail').then((m) => m.initEventsDetailPage),
   program: () => import('./pages/program').then((m) => m.initProgramPage),

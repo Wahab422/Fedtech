@@ -15,11 +15,15 @@ const smoothScrollHandlers = new WeakMap();
  * - rafThrottle(fn): throttle with requestAnimationFrame.
  * - isInViewport(el, offset): viewport check with offset.
  * - observeInView(elements, cb, options): IO observer + fallback.
+ * - handleStagger(): set transition delays on [data-anim] / .data-anim from [data-stagger] / [data-stagger-delay].
  * - animateNumber(el, end, duration, start): count up animation.
  * - smoothScrollTo(el, target, offset, options): bind smooth scroll.
  * - lenisSmoothScrollTo(target, offset, options): scroll w/ Lenis.
  * - backToTop(options): scroll to top (Lenis or native).
  * - getQueryParams(): parse URL query string.
+ * - getCookie(name): get cookie value by name.
+ * - setCookie(name, value, days): set cookie with optional expiry in days.
+ * - mirrorClick(from, to, options): when from is clicked, trigger click on to. Returns cleanup.
  * - waitForElement(selector, timeout): resolve when node appears.
  * - handleError(error, context, silent): centralized error handler.
  * - withErrorHandler(fn, context): wrap async with error handling.
@@ -169,13 +173,7 @@ export function observeInView(elements, callback, options = {}) {
     return () => { };
   }
 
-  const {
-    root = null,
-    rootMargin = '0px',
-    threshold = 0,
-    once = true,
-    offset = 0,
-  } = options;
+  const { root = null, rootMargin = '0px', threshold = 0, once = true, offset = 0 } = options;
 
   if (typeof IntersectionObserver !== 'undefined') {
     const observer = new IntersectionObserver(
@@ -214,13 +212,44 @@ export function observeInView(elements, callback, options = {}) {
   });
 
   window.addEventListener('scroll', checkInView, { passive: true });
-  window.addEventListener('resize', checkInView);
+  window.addEventListener('resize', checkInView, { passive: true });
   checkInView();
 
   return () => {
     window.removeEventListener('scroll', checkInView);
     window.removeEventListener('resize', checkInView);
   };
+}
+
+/**
+ * Set staggered transition delays on children with [data-anim] or .data-anim
+ * inside elements with [data-stagger]. Uses data-stagger as step (ms) and optional data-stagger-delay as initial delay.
+ */
+export function handleStagger() {
+  if (!document.querySelector('[data-stagger]')) return;
+
+  document.querySelectorAll('[data-stagger]').forEach((t) => {
+    const staggerValue = t.getAttribute('data-stagger');
+    const hasDelayAttribute = t.hasAttribute('data-stagger-delay');
+    const delayValue = t.getAttribute('data-stagger-delay');
+    const effectiveStagger =
+      staggerValue && Number(staggerValue) > 1 ? Number(staggerValue) : 100;
+    let currentDelay;
+
+    if (hasDelayAttribute) {
+      currentDelay =
+        delayValue && delayValue !== '' ? Number(delayValue) : effectiveStagger;
+    } else {
+      currentDelay = 0;
+    }
+
+    Array.from(t.querySelectorAll('[data-anim], .data-anim')).forEach((child) => {
+      if (currentDelay > 0) {
+        child.style.transitionDelay = currentDelay + 'ms';
+      }
+      currentDelay += effectiveStagger;
+    });
+  });
 }
 
 /**
@@ -560,6 +589,70 @@ export function getQueryParams() {
 }
 
 /**
+ * Get a cookie value by name
+ * @param {string} name - Cookie name
+ * @returns {string|null} - Cookie value or null if not found
+ */
+export function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+/**
+ * Set a cookie
+ * @param {string} name - Cookie name
+ * @param {string} value - Cookie value
+ * @param {number} [days=365] - Expiry in days
+ */
+export function setCookie(name, value, days = 365) {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+}
+
+/**
+ * Mirror click: when one element is clicked, trigger a click on another element.
+ * @param {string|HTMLElement|NodeList|HTMLElement[]} from - Element(s) to listen for clicks (selector, element, or list)
+ * @param {string|HTMLElement} to - Element to click when from is clicked (selector or element)
+ * @param {Object} [options] - Options
+ * @param {boolean} [options.preventOriginal=false] - If true, prevent default and stop propagation on the original click so only the mirror click runs
+ * @returns {Function} Cleanup function to remove the click listener(s)
+ */
+export function mirrorClick(from, to, options = {}) {
+  if (typeof document === 'undefined') {
+    return () => { };
+  }
+
+  const sources = resolveElementList(from);
+  const target = resolveElement(to);
+
+  if (!sources.length) {
+    logger.warn('[mirrorClick] No source element(s) found:', from);
+    return () => { };
+  }
+  if (!target) {
+    logger.warn('[mirrorClick] Target element not found:', to);
+    return () => { };
+  }
+
+  const { preventOriginal = false } = options;
+
+  const handler = (e) => {
+    if (preventOriginal) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    target.click();
+  };
+
+  sources.forEach((el) => el.addEventListener('click', handler));
+
+  return () => {
+    sources.forEach((el) => el.removeEventListener('click', handler));
+  };
+}
+
+/**
  * Wait for an element to appear in the DOM
  * @param {string} selector - The selector to watch for
  * @param {number} timeout - Maximum time to wait in milliseconds
@@ -644,9 +737,13 @@ export function withErrorHandler(fn, context = 'Function') {
  */
 export function loadScript(src, options = {}) {
   return new Promise((resolve, reject) => {
-    // Check if script already exists
-    const existingScript = document.querySelector(`script[src="${src}"]`);
-    if (existingScript) {
+    // Check if script already exists (by src or by id to avoid race duplicates)
+    const existingBySrc = document.querySelector(`script[src="${src}"]`);
+    if (existingBySrc) {
+      resolve();
+      return;
+    }
+    if (options.id && document.querySelector(`script#${CSS.escape(options.id)}`)) {
       resolve();
       return;
     }

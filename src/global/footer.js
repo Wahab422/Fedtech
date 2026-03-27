@@ -8,16 +8,15 @@ export function initFooter() {
 
   const backToTopButtons = document.querySelectorAll('[data-back-to-top]');
   if (backToTopButtons.length) {
-    backToTopButtons.forEach((button) => {
-      button.addEventListener('click', handleClick, { passive: true });
-    });
     const handleClick = () => {
       backToTop();
     };
 
-
-    cleanupFunctions.push(() => {
-      backToTopButton.removeEventListener('click', handleClick);
+    backToTopButtons.forEach((button) => {
+      button.addEventListener('click', handleClick, { passive: true });
+      cleanupFunctions.push(() => {
+        button.removeEventListener('click', handleClick);
+      });
     });
   }
 }

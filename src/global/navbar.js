@@ -1,13 +1,6 @@
-/**
- * Navbar Component
- * Runs on every page
- * Performance optimized with RAF and passive listeners
- */
-
 import { handleError } from '../utils/helpers';
 import { logger } from '../utils/logger';
 
-// Store cleanup functions for global components
 const cleanupFunctions = [];
 
 export function initNavbar() {
@@ -16,11 +9,9 @@ export function initNavbar() {
   try {
     const eventCleanups = [];
 
-    // Toggle elements
     const toggleElements = document.querySelectorAll('[toggle-class]');
 
     if (toggleElements.length) {
-      // Get elements in same toggle group (OPT-IN)
       const getGroupElements = (el, className) => {
         const group = el.getAttribute('toggle-group');
 
@@ -29,14 +20,10 @@ export function initNavbar() {
           : document.querySelectorAll(`[toggle-class="${className}"]:not([toggle-group])`);
       };
 
-      // Outside remove control (OPT-IN)
       const shouldRemoveOnOutside = (el) => {
         return el.getAttribute('remove-class-outside') === 'true';
       };
 
-      /************************
-       * CLICK HANDLING
-       *************************/
       const handleDocumentClick = (e) => {
         const trigger = e.target.closest('[toggle-trigger]');
         const clicked = trigger
@@ -56,13 +43,11 @@ export function initNavbar() {
             return;
           }
 
-          // Normal click toggle
           if (!isHoverToggle) {
             groupEls.forEach((el) => el.classList.remove(className));
             if (!hasClass) clicked.classList.add(className);
           }
         } else {
-          // CLICK OUTSIDE (only opted-in elements)
           toggleElements.forEach((el) => {
             if (!shouldRemoveOnOutside(el)) return;
 
@@ -74,16 +59,12 @@ export function initNavbar() {
       document.addEventListener('click', handleDocumentClick);
       eventCleanups.push(() => document.removeEventListener('click', handleDocumentClick));
 
-      /************************
-       * HOVER HANDLING (DESKTOP)
-       *************************/
       toggleElements.forEach((el) => {
         if (el.getAttribute('toggle-on') === 'hover' && window.innerWidth > 768) {
           const className = el.getAttribute('toggle-class');
           const triggers = el.querySelectorAll('[toggle-trigger]');
           const groupEls = getGroupElements(el, className);
 
-          // OPEN on hover (any trigger)
           triggers.forEach((trigger) => {
             const handleMouseEnter = () => {
               groupEls.forEach((i) => i.classList.remove(className));
@@ -93,7 +74,6 @@ export function initNavbar() {
             eventCleanups.push(() => trigger.removeEventListener('mouseenter', handleMouseEnter));
           });
 
-          // CLOSE on leave ONLY if opted-in
           if (shouldRemoveOnOutside(el)) {
             const handleMouseLeave = () => {
               el.classList.remove(className);
@@ -117,9 +97,10 @@ export function initNavbar() {
 
     if (nav) {
       let prevScrollPos = window.pageYOffset;
-      const scrollHandler = () => {
+      window.addEventListener('scroll', () => {
         const currentScrollPos = window.pageYOffset;
 
+        // Scrolled state
         if (currentScrollPos > 0) {
           nav.classList.add('scrolled');
         } else {
@@ -133,12 +114,8 @@ export function initNavbar() {
             nav.classList.add('scroll-down');
           }
         }
-
         prevScrollPos = currentScrollPos;
-      };
-
-      window.addEventListener('scroll', scrollHandler, { passive: true });
-      scrollHandler();
+      });
       eventCleanups.push(() => window.removeEventListener('scroll', scrollHandler));
     }
 

@@ -3,6 +3,8 @@ import { logger } from '../utils/logger';
 import { initCarousel } from 'src/components/carousel';
 import { initAccordionCSS } from 'src/components/accordion';
 import { initArticleAnchors } from '../components/articleAnchors';
+import { initQuickJumps } from '../functions/quickJumps';
+import { initRegistrationDeadline } from '../functions/registrationDeadline';
 import { scheduleScrollRefresh } from '../global/lenis';
 const cleanupFunctions = [];
 
@@ -12,13 +14,19 @@ export function initEventsDetailPage() {
   try {
     calculateSpeakers();
     separateTextByComma();
+    initRegistrationDeadline();
     loadScript('https://cdn.jsdelivr.net/npm/@finsweet/attributes-richtext@1/richtext.js').then(
       () => {
         cleanupFunctions.push(initArticleAnchors());
-        appendElement('#multi-img-slider-wrap', '#multi-img-slider', { emptyParent: true });
         appendElement('[testimonials]', '#testimonials-slider');
-        appendElement('[participants get]', '#participants get');
+        appendElement('[participants-get]', '#participants-get');
         scheduleScrollRefresh();
+        // Handle quick jumps for mobile
+        if (window.innerWidth < 991) {
+          if (!document.querySelector('#quick-jump-wrap')) return;
+          cleanupFunctions.push(initQuickJumps());
+          appendElement('#quick-jumps-body-wrap', '[anchors-list]');
+        }
       }
     );
     cleanupFunctions.push(initCarousel());
@@ -48,7 +56,11 @@ function calculateSpeakers() {
 
     if (totalEl) {
       const count = speakers.length;
-      totalEl.textContent = `${count} Speaker${count !== 1 ? 's' : ''}`;
+      if (wrapper.getAttribute('speakers-tag') === 'just-numbers') {
+        totalEl.textContent = `${count}`;
+      } else {
+        totalEl.textContent = `${count} Speaker${count !== 1 ? 's' : ''}`;
+      }
     }
   });
 }

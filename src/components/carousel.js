@@ -133,7 +133,7 @@ export function initCarousel() {
       data: { sliderCount: sliders.length },
       timestamp: Date.now(),
     }),
-  }).catch(() => {});
+  }).catch(() => { });
   // #endregion
   if (!sliders.length) return;
 
@@ -186,7 +186,7 @@ function initializeCarousels(sliderList) {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
     if (slider._carouselInitialized) return;
     slider._carouselInitialized = true;
@@ -209,7 +209,7 @@ function initializeCarousels(sliderList) {
           data: { initializedFlag: Boolean(slider._carouselInitialized) },
           timestamp: Date.now(),
         }),
-      }).catch(() => {});
+      }).catch(() => { });
       // #endregion
       logger.warn('Carousel viewport not found in slider:', slider);
       return;
@@ -265,16 +265,16 @@ function initializeCarousels(sliderList) {
 
     const carouselOptions = {
       align: alignAttr || (centerMode ? 'center' : 'start'),
-      containScroll: centerBounds ? 'trimSnaps' : false,
+      containScroll: 'keepSnaps',
       loop: loopMode,
       draggable: fadeMode ? false : !disableDrag,
-      dragFree: fadeMode ? false : dragFree,
+      dragFree: fadeMode ? false : dragFree
     };
 
     let carouselApi = null;
     let autoplayTimer = null;
     const cleanupTasks = [];
-    let scrollToIndex = () => {};
+    let scrollToIndex = () => { };
     let restartAutoplay = null;
     let lastButtonStateKey = null;
 
@@ -457,7 +457,7 @@ function initializeCarousels(sliderList) {
           },
           timestamp: Date.now(),
         }),
-      }).catch(() => {});
+      }).catch(() => { });
       // #endregion
       const stateKey = JSON.stringify({
         canPrev,
@@ -484,7 +484,7 @@ function initializeCarousels(sliderList) {
           data: { canPrev, canNext, bothDisabled },
           timestamp: Date.now(),
         }),
-      }).catch(() => {});
+      }).catch(() => { });
       // #endregion
       if (navButtonsWrapper) {
         navButtonsWrapper.style.display = bothDisabled ? 'none' : '';
@@ -778,7 +778,7 @@ export function destroyCarousels() {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
     if (Array.isArray(slider._carouselCleanup)) {
       slider._carouselCleanup.forEach((cleanup) => {
@@ -813,7 +813,7 @@ export function destroyCarousels() {
       data: { groupCount: syncedSliderGroups.size },
       timestamp: Date.now(),
     }),
-  }).catch(() => {});
+  }).catch(() => { });
   // #endregion
 }
 
@@ -844,7 +844,7 @@ function registerSyncedSlider(syncId, carouselApi) {
       data: { syncId, groupSize: group.size },
       timestamp: Date.now(),
     }),
-  }).catch(() => {});
+  }).catch(() => { });
   // #endregion
 
   const syncHandler = () => {

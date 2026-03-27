@@ -3,21 +3,20 @@ import { logger } from '../utils/logger';
 import { initCarousel } from 'src/components/carousel';
 import { initAccordionCSS } from 'src/components/accordion';
 import { initArticleAnchors } from '../components/articleAnchors';
-import { scheduleScrollRefresh } from '../global/lenis';
 import { initQuickJumps } from '../functions/quickJumps';
-import { initRegistrationDeadline } from '../functions/registrationDeadline';
+import { scheduleScrollRefresh } from '../global/lenis';
 const cleanupFunctions = [];
 
-export function initProgramDetailPage() {
-  logger.log('📄 Program detail page initialized');
+export function initInsightsDetailsPage() {
+  logger.log('💡 Insights details page initialized');
 
   try {
     loadScript('https://cdn.jsdelivr.net/npm/@finsweet/attributes-richtext@1/richtext.js').then(
       () => {
         cleanupFunctions.push(initArticleAnchors());
         appendElement('[testimonials]', '#testimonials-slider');
-        appendElement('[participants-get]', '#participants-get');
         scheduleScrollRefresh();
+        // Handle quick jumps for mobile
         if (window.innerWidth < 991) {
           if (!document.querySelector('#quick-jump-wrap')) return;
           cleanupFunctions.push(initQuickJumps());
@@ -27,35 +26,18 @@ export function initProgramDetailPage() {
     );
     cleanupFunctions.push(initCarousel());
     cleanupFunctions.push(initAccordionCSS());
-    separateTextByComma();
-    initRegistrationDeadline();
   } catch (error) {
-    handleError(error, 'Program Detail Page Initialization');
+    handleError(error, 'Insights Details Page Initialization');
   }
 }
 
-export function cleanupProgramDetailPage() {
+export function cleanupInsightsDetailsPage() {
   cleanupFunctions.forEach((cleanup) => {
     try {
       cleanup();
     } catch (error) {
-      handleError(error, 'Program Detail Page Cleanup');
+      handleError(error, 'Insights Details Page Cleanup');
     }
   });
   cleanupFunctions.length = 0;
-}
-
-
-function separateTextByComma() {
-  const wrappers = document.querySelectorAll('[separate-text-comma]');
-  if (!wrappers.length) return;
-
-  wrappers.forEach((wrapper) => {
-    const items = wrapper.querySelectorAll('.w-dyn-item > div');
-    const texts = Array.from(items)
-      .map((el) => el.textContent.trim())
-      .filter(Boolean);
-    const combinedText = texts.join(', ');
-    wrapper.innerHTML = `<div class="style-label">${combinedText}</div>`;
-  });
 }
